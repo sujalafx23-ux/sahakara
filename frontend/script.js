@@ -1622,5 +1622,19 @@ function closeFssaiPassModal() {
   document.body.style.overflow = '';
 }
 
+function dismissPrototypeToast() {
+  const toast = document.getElementById('prototype-notice-toast');
+  if (toast) {
+    toast.style.transition = 'opacity 0.25s ease, transform 0.25s ease';
+    toast.style.opacity = '0';
+    toast.style.transform = 'translate(-50%, 15px)';
+    setTimeout(() => {
+      if (toast && toast.parentNode) {
+        toast.parentNode.removeChild(toast);
+      }
+    }, 260);
+  }
+}
+
 
 

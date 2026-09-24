@@ -19,13 +19,13 @@
 </head>
 <body>
 
-  <!-- Top Announcement Bar -->
-  <div class="announcement-bar">
+  <!-- Top Announcement Bar: Development & Prototype Mode -->
+  <div class="announcement-bar prototype-mode-banner">
     <div class="container announcement-content">
-      <span class="announcement-pill">Pilot City: Jaipur</span>
-      <span class="announcement-text">Pilot city: Jaipur, expanding city by city. Zero fees for non-profit shelters.</span>
-      <a href="#ladder" class="announcement-link">
-        Learn how the ladder works
+      <span class="announcement-pill prototype-pill">⚡ PROTOTYPE &bull; IN DEVELOPMENT</span>
+      <span class="announcement-text">Sahakara is currently an active prototype in development mode. Pilot city: Jaipur, expanding city by city.</span>
+      <a href="#how-it-works" class="announcement-link">
+        Explore Prototype
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
       </a>
     </div>
@@ -43,6 +43,7 @@
           </svg>
         </div>
         <span class="brand-name">Sahakara</span>
+        <span class="nav-prototype-badge">Prototype</span>
       </a>
 
       <!-- Navigation Links -->
@@ -75,8 +76,8 @@
         
         <div class="hero-header">
           <div class="hero-tag">
-            <span class="status-dot"></span>
-            SURPLUS REDISTRIBUTION PROTOCOL
+            <span class="status-dot pulse-amber"></span>
+            PROTOTYPE &bull; CURRENTLY IN DEVELOPMENT MODE
           </div>
           <h1 class="hero-title">Nothing reaches the dumpster.</h1>
           <p class="hero-subtitle">
@@ -1476,6 +1477,18 @@
         <span style="font-size:0.75rem;color:var(--text-muted);">Timestamp: Verified 2026-09-24 &bull; Jaipur Node</span>
         <button type="button" class="btn btn-primary btn-sm" onclick="closeFssaiPassModal()">Done</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Floating Development Mode Toast Banner (Shown on initial page load) -->
+  <div class="prototype-notice-toast" id="prototype-notice-toast">
+    <div class="prototype-toast-content">
+      <div class="prototype-toast-icon">⚡</div>
+      <div class="prototype-toast-text">
+        <strong>Prototype &amp; Development Mode:</strong>
+        <span>Sahakara is currently an active prototype in development mode (Pilot City: Jaipur). Dispatches, helpline routing, and driver telemetry are simulated for demonstration.</span>
+      </div>
+      <button type="button" class="prototype-toast-dismiss" onclick="dismissPrototypeToast()" aria-label="Dismiss prototype notice">Got it &times;</button>
     </div>
   </div>
 
