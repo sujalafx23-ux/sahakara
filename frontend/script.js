@@ -159,6 +159,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   loadDonations();
   setupRealtimeSubscription();
+  checkAdminPresence();
 });
 
 let allCities = [
@@ -688,7 +689,56 @@ function renderRealtimeTable() {
 
 /* ==========================================================================
    SHELTER FOOD REQUISITION WORKFLOW ("Shelters can ask food")
+   Demo-safe matching with progressive filter relaxation and demo seeder
    ========================================================================== */
+let lastShelterRequest = null;
+
+const CITY_COORDS_MAP = {
+  'jaipur': { lat: 26.9124, lon: 75.7873 },
+  'delhi ncr': { lat: 28.6139, lon: 77.2090 },
+  'delhi': { lat: 28.6139, lon: 77.2090 },
+  'bengaluru': { lat: 12.9716, lon: 77.5946 },
+  'mumbai': { lat: 19.0760, lon: 72.8777 },
+  'hyderabad': { lat: 17.3850, lon: 78.4867 }
+};
+
+function calculateDistanceKm(lat1, lon1, lat2, lon2) {
+  if (!lat1 || !lon1 || !lat2 || !lon2) return null;
+  const R = 6371; // km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return Math.round((R * c) * 10) / 10;
+}
+
+function matchesCategory(requestedPref, donationCategory, donationFoodName = '') {
+  const req = (requestedPref || '').toLowerCase();
+  const cat = (donationCategory || '').toLowerCase();
+  const name = (donationFoodName || '').toLowerCase();
+  const text = `${cat} ${name}`;
+
+  if (req.includes('cooked')) {
+    return text.includes('cooked') || text.includes('rice') || text.includes('dal') || text.includes('curry') || text.includes('thali') || text.includes('chawal') || text.includes('chapati') || text.includes('pulao') || text.includes('meal') || text.includes('sabzi') || text.includes('dinner') || text.includes('lunch');
+  }
+  if (req.includes('dry') || req.includes('ration') || req.includes('pantry')) {
+    return text.includes('dry') || text.includes('ration') || text.includes('snack') || text.includes('bakery') || text.includes('bread') || text.includes('bun') || text.includes('biscuit') || text.includes('grain');
+  }
+  if (req.includes('raw') || req.includes('produce')) {
+    return text.includes('raw') || text.includes('produce') || text.includes('veg') || text.includes('fruit') || text.includes('greens') || text.includes('peel');
+  }
+  return cat.includes(req) || req.includes(cat);
+}
+
+function getDonationTimeLeftMinutes(d) {
+  const safeMins = Number(d.safe_minutes) || 240;
+  if (!d.created_at) return safeMins;
+  const elapsedMins = Math.max(0, Math.floor((Date.now() - new Date(d.created_at).getTime()) / 60000));
+  return Math.max(15, safeMins - elapsedMins);
+}
+
 function openShelterRequestModal() {
   const modal = document.getElementById('modal-shelter-request');
   if (!modal) return;
@@ -696,6 +746,13 @@ function openShelterRequestModal() {
   modal.hidden = false;
   modal.style.display = 'flex';
   document.body.style.overflow = 'hidden';
+
+  const formView = document.getElementById('shelter-req-form-view');
+  const resultsView = document.getElementById('shelter-req-results-view');
+  if (formView) formView.style.display = 'block';
+  if (resultsView) resultsView.style.display = 'none';
+
+  checkAdminPresence();
 }
 
 function closeShelterRequestModal() {
@@ -707,24 +764,254 @@ function closeShelterRequestModal() {
   document.body.style.overflow = 'auto';
 }
 
+function backToShelterReqForm() {
+  const formView = document.getElementById('shelter-req-form-view');
+  const resultsView = document.getElementById('shelter-req-results-view');
+  if (formView) formView.style.display = 'block';
+  if (resultsView) resultsView.style.display = 'none';
+}
+
+/**
+ * Progressive Food Ladder Matching Algorithm for Shelters:
+ * 1. Strict match: same city, matching food category, status Matched/Posted, quantity available, sorted by distance and time left.
+ * 2. Progressive filter relaxation:
+ *    a. Same city, any food category -> "Category flexible match"
+ *    b. Any city, same category -> "Nearby cluster match"
+ *    c. Any donation with status Posted or Matched regardless of city/category -> "Best available match (expanding search)"
+ * 3. Never show hard empty state unless truly 0 donations in entire table. In that case, show sample donation card (unclaimable).
+ */
+function findDonationsForShelterRequest(req) {
+  const reqCityNorm = (req.city || '').trim().toLowerCase();
+  const shelterCityCoord = CITY_COORDS_MAP[reqCityNorm] || CITY_COORDS_MAP['jaipur'];
+
+  const enrichItem = (item) => {
+    let lat = item.lat;
+    let lon = item.lon;
+    const itemCityNorm = (item.city || '').trim().toLowerCase();
+    if (!lat || !lon) {
+      const coord = CITY_COORDS_MAP[itemCityNorm];
+      if (coord) {
+        lat = coord.lat;
+        lon = coord.lon;
+      }
+    }
+    const dist = calculateDistanceKm(shelterCityCoord.lat, shelterCityCoord.lon, lat, lon);
+    const timeLeft = getDonationTimeLeftMinutes(item);
+    return {
+      ...item,
+      _dist: dist !== null ? dist : (itemCityNorm === reqCityNorm ? 3.8 : 250),
+      _timeLeft: timeLeft
+    };
+  };
+
+  const sortItems = (items) => {
+    return items.sort((a, b) => {
+      const distA = a._dist !== null && a._dist !== undefined ? a._dist : 9999;
+      const distB = b._dist !== null && b._dist !== undefined ? b._dist : 9999;
+      if (Math.abs(distA - distB) > 0.5) return distA - distB;
+      return a._timeLeft - b._timeLeft;
+    });
+  };
+
+  // Base pool of active donations (Posted or Matched with positive quantity)
+  const candidatePool = (allDonations || []).filter((d) => {
+    const s = (d.status || '').toLowerCase();
+    const qty = Number(d.qty) || 0;
+    return (s === 'posted' || s === 'matched') && qty > 0;
+  });
+
+  // Level 1: Strict Match (same city, matching food category, status Posted/Matched, quantity > 0)
+  const strictMatches = candidatePool.filter((d) => {
+    const cityMatch = (d.city || '').trim().toLowerCase() === reqCityNorm;
+    const catMatch = matchesCategory(req.foodPref, d.food_category, d.food);
+    return cityMatch && catMatch;
+  });
+
+  if (strictMatches.length > 0) {
+    const enriched = sortItems(strictMatches.map(enrichItem));
+    return {
+      level: 'exact',
+      label: 'Exact match',
+      badgeClass: 'match-exact',
+      items: enriched,
+      isSampleFallback: false
+    };
+  }
+
+  // Level 2a: Same city, any food category
+  const cityFlexibleMatches = candidatePool.filter((d) => {
+    return (d.city || '').trim().toLowerCase() === reqCityNorm;
+  });
+
+  if (cityFlexibleMatches.length > 0) {
+    const enriched = sortItems(cityFlexibleMatches.map(enrichItem));
+    return {
+      level: 'flexible',
+      label: 'Category flexible match',
+      badgeClass: 'match-flexible',
+      items: enriched,
+      isSampleFallback: false
+    };
+  }
+
+  // Level 2b: Any city, same food category
+  const clusterMatches = candidatePool.filter((d) => {
+    return matchesCategory(req.foodPref, d.food_category, d.food);
+  });
+
+  if (clusterMatches.length > 0) {
+    const enriched = sortItems(clusterMatches.map(enrichItem));
+    return {
+      level: 'cluster',
+      label: 'Nearby cluster match',
+      badgeClass: 'match-cluster',
+      items: enriched,
+      isSampleFallback: false
+    };
+  }
+
+  // Level 2c: Any donation with status Posted or Matched regardless of city/category
+  if (candidatePool.length > 0) {
+    const enriched = sortItems(candidatePool.map(enrichItem));
+    return {
+      level: 'best',
+      label: 'Best available match (expanding search)',
+      badgeClass: 'match-best',
+      items: enriched,
+      isSampleFallback: false
+    };
+  }
+
+  // If there are other donations in the entire table (even if different status)
+  if (allDonations && allDonations.length > 0) {
+    const enriched = sortItems(allDonations.map(enrichItem));
+    return {
+      level: 'best',
+      label: 'Best available match (expanding search)',
+      badgeClass: 'match-best',
+      items: enriched,
+      isSampleFallback: false
+    };
+  }
+
+  // Level 3: Truly zero donations in the entire table -> Sample fallback card (unclaimable)
+  const sampleCard = {
+    id: 'sample-demo-card',
+    food: '[Sample] 75 Fresh Meals — Dal Tadka & Jeera Rice',
+    qty: req.meals || 75,
+    donor_type: 'Central Community Kitchen',
+    city: req.city || 'Jaipur',
+    area: `${req.city || 'Jaipur'} Food Cluster (Sample Preview)`,
+    safe_minutes: 240,
+    food_category: 'cooked rice/dal',
+    status: 'Posted',
+    stage: 1,
+    is_sample: true,
+    _dist: 3.5,
+    _timeLeft: 210
+  };
+
+  return {
+    level: 'sample',
+    label: 'Sample — for demo purposes',
+    badgeClass: 'match-sample',
+    items: [sampleCard],
+    isSampleFallback: true
+  };
+}
+
+function renderShelterMatchResults(matchData, req) {
+  const container = document.getElementById('shelter-match-results-list');
+  const countBadge = document.getElementById('shelter-results-count-badge');
+  const criteriaDisplay = document.getElementById('shelter-criteria-display');
+
+  if (criteriaDisplay) {
+    criteriaDisplay.textContent = `${req.name} (${req.city}) • Needed: ${req.meals} Meals • Pref: ${req.foodPref}`;
+  }
+
+  if (countBadge) {
+    if (matchData.isSampleFallback) {
+      countBadge.style.background = '#FEF3C7';
+      countBadge.style.color = '#92400E';
+      countBadge.textContent = 'Demo Mode (Empty Table)';
+    } else {
+      countBadge.style.background = '#DEF7EC';
+      countBadge.style.color = '#03543F';
+      countBadge.textContent = `${matchData.items.length} Batch${matchData.items.length > 1 ? 'es' : ''} Found`;
+    }
+  }
+
+  if (!container) return;
+
+  const html = matchData.items.map((item) => {
+    const isSample = Boolean(item.is_sample);
+    const itemStatus = item.status || 'Posted';
+    const statusClass = itemStatus === 'Posted' ? 'status-posted' : 'status-matched';
+    const distText = item._dist !== null && item._dist !== undefined ? `${item._dist} km away` : 'Cluster proximity';
+    const safeTimeText = `${item._timeLeft || 180}m window left`;
+
+    return `
+      <div class="match-result-card ${isSample ? 'is-sample' : ''}">
+        <div class="match-card-header">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <h4 class="match-card-title">${item.food || 'Surplus Food Batch'}</h4>
+            <span class="match-badge ${matchData.badgeClass}">${matchData.label}</span>
+          </div>
+          <span class="status-pill ${statusClass}">${itemStatus}</span>
+        </div>
+        
+        <div class="match-card-meta">
+          <span>📍 <strong>${item.city || 'City'}</strong> • ${item.area || 'Cluster'}</span>
+          <span>⚡ <strong>${item.qty}</strong> meals available</span>
+          <span>⏱️ <strong>${safeTimeText}</strong></span>
+          <span>📏 <strong>${distText}</strong></span>
+        </div>
+
+        <div class="match-card-bottom">
+          <div style="font-size:0.75rem;color:var(--text-muted);">
+            ${isSample 
+              ? '<span style="color:#B45309;font-weight:600;">⚠️ Sample card for preview. Claim button disabled until demo data is seeded.</span>'
+              : `Batch #${(item.id || '').substring(0, 8).toUpperCase()} • Donor: ${item.donor_type || 'Commercial Kitchen'}`
+            }
+          </div>
+          <div>
+            ${isSample 
+              ? `<button type="button" class="btn btn-secondary btn-sm" disabled title="Demo data" style="cursor:not-allowed;opacity:0.65;">
+                   🔒 Demo data
+                 </button>`
+              : `<button type="button" class="btn btn-primary btn-sm" id="btn-claim-${item.id}" onclick="claimDonationForShelter('${item.id}', '${(req.name || 'Shelter').replace(/'/g, "\\'")}')">
+                   <span>Claim Food Batch &rarr;</span>
+                 </button>`
+            }
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  container.innerHTML = html;
+}
+
 async function handleShelterRequestSubmit(e) {
   e.preventDefault();
-  const name = document.getElementById('req-shelter-name')?.value.trim();
-  const type = document.getElementById('req-shelter-type')?.value;
-  const city = document.getElementById('req-shelter-city')?.value;
-  const meals = Number(document.getElementById('req-shelter-meals')?.value) || 50;
-  const foodPref = document.getElementById('req-food-preference')?.value;
-  const phone = document.getElementById('req-contact-phone')?.value.trim();
-  const address = document.getElementById('req-shelter-address')?.value.trim();
-  const notes = document.getElementById('req-special-notes')?.value.trim();
+  const name = document.getElementById('req-shelter-name')?.value.trim() || 'Community Shelter';
+  const type = document.getElementById('req-shelter-type')?.value || 'shelter';
+  const city = document.getElementById('req-shelter-city')?.value || 'Jaipur';
+  const meals = Number(document.getElementById('req-shelter-meals')?.value) || 80;
+  const foodPref = document.getElementById('req-food-preference')?.value || 'Cooked Dinner';
+  const phone = document.getElementById('req-contact-phone')?.value.trim() || '';
+  const address = document.getElementById('req-shelter-address')?.value.trim() || '';
+  const notes = document.getElementById('req-special-notes')?.value.trim() || '';
+
+  lastShelterRequest = { name, type, city, meals, foodPref, phone, address, notes };
 
   const submitBtn = document.getElementById('btn-submit-shelter-req');
   if (submitBtn) {
     submitBtn.disabled = true;
-    submitBtn.innerHTML = '<span>Broadcasting to Network...</span>';
+    submitBtn.innerHTML = '<span>Matching with Food Ladder...</span>';
   }
 
-  // Log requisition to Supabase audit_log so Admins can inspect and dispatch
+  // Log requisition to Supabase audit_log
   if (sbClient) {
     try {
       await sbClient.from('audit_log').insert([{
@@ -737,14 +1024,276 @@ async function handleShelterRequestSubmit(e) {
     }
   }
 
-  closeShelterRequestModal();
-  showToast(`🙏 Requisition for ${meals} meals submitted for ${name}! Matching donors will be notified.`);
+  // Run Progressive Match Algorithm
+  const matchData = findDonationsForShelterRequest(lastShelterRequest);
+
+  // Switch modal view to Results
+  const formView = document.getElementById('shelter-req-form-view');
+  const resultsView = document.getElementById('shelter-req-results-view');
+  if (formView) formView.style.display = 'none';
+  if (resultsView) resultsView.style.display = 'block';
+
+  renderShelterMatchResults(matchData, lastShelterRequest);
+  checkAdminPresence();
 
   if (submitBtn) {
     submitBtn.disabled = false;
-    submitBtn.innerHTML = '<span>Broadcast Requisition to Network</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>';
+    submitBtn.innerHTML = '<span>Find Matching Surplus Food &rarr;</span>';
   }
 }
+
+async function claimDonationForShelter(donationId, shelterName) {
+  const btn = document.getElementById(`btn-claim-${donationId}`);
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span>Coordinating Dispatch...</span>';
+  }
+
+  const matchKey = `shelter-${(shelterName || 'shelter').toLowerCase().replace(/\s+/g, '-')}`;
+
+  // Update Supabase
+  if (sbClient) {
+    try {
+      await sbClient
+        .from('donations')
+        .update({
+          status: 'Matched',
+          match_id: matchKey
+        })
+        .eq('id', donationId);
+
+      await sbClient.from('audit_log').insert([{
+        action: 'SHELTER_CLAIM_DONATION',
+        target: donationId,
+        details: { shelterName, claimed_at: new Date().toISOString() }
+      }]);
+    } catch (err) {
+      console.warn('[Shelter Claim] Supabase error:', err.message);
+    }
+  }
+
+  // Update local memory state
+  const found = allDonations.find((d) => d.id === donationId);
+  if (found) {
+    found.status = 'Matched';
+    found.match_id = matchKey;
+    currentLiveDispatch = found;
+  }
+
+  if (btn) {
+    btn.className = 'btn btn-secondary btn-sm';
+    btn.disabled = true;
+    btn.innerHTML = '<span>✅ Batch Claimed & Dispatched</span>';
+  }
+
+  showToast(`🎉 Batch successfully claimed by ${shelterName}! Driver dispatch coordinated.`);
+  renderRealtimeTable();
+  recalculateDashboardMetrics();
+  renderMapData();
+}
+
+/**
+ * Quick 1-click Demo Seeder for Admins
+ * Inserts 5-6 realistic sample donations across Jaipur, Delhi NCR, and Bengaluru
+ */
+async function seedDemoDonationsQuick(e) {
+  if (e && e.preventDefault) e.preventDefault();
+  const btn = e?.currentTarget;
+  const origHtml = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span>🌱 Seeding 6 Batches...</span>';
+  }
+
+  const sampleBatches = [
+    {
+      food: '[Demo] 45 Hot Meals — Dal Fry & Steamed Rice',
+      qty: 45,
+      donor_type: 'Mess',
+      city: 'Jaipur',
+      area: 'Mansarovar Campus Canteen [Demo]',
+      lat: 26.8530,
+      lon: 75.7680,
+      safe_minutes: 240,
+      food_category: 'cooked rice/dal',
+      status: 'Posted',
+      stage: 1,
+      source: 'Web',
+      otp: Math.floor(1000 + Math.random() * 9000).toString(),
+      created_at: new Date().toISOString()
+    },
+    {
+      food: '[Demo] 80 Meals — Rajma Chawal & Chapati',
+      qty: 80,
+      donor_type: 'Restaurant',
+      city: 'Jaipur',
+      area: 'C-Scheme Dining Hall [Demo]',
+      lat: 26.9120,
+      lon: 75.8050,
+      safe_minutes: 240,
+      food_category: 'cooked rice/dal',
+      status: 'Matched',
+      match_id: 'rec-ananda',
+      stage: 1,
+      source: 'Web',
+      otp: Math.floor(1000 + Math.random() * 9000).toString(),
+      created_at: new Date(Date.now() - 20 * 60000).toISOString()
+    },
+    {
+      food: '[Demo] 60 Meals — Chana Masala & Pulao',
+      qty: 60,
+      donor_type: 'Mess',
+      city: 'Delhi NCR',
+      area: 'Connaught Place Central Hub [Demo]',
+      lat: 28.6315,
+      lon: 77.2167,
+      safe_minutes: 240,
+      food_category: 'cooked rice/dal',
+      status: 'Posted',
+      stage: 1,
+      source: 'SMS',
+      otp: Math.floor(1000 + Math.random() * 9000).toString(),
+      created_at: new Date(Date.now() - 15 * 60000).toISOString()
+    },
+    {
+      food: '[Demo] 35 Packs — Bakery Sandwiches & Buns',
+      qty: 35,
+      donor_type: 'Restaurant',
+      city: 'Delhi NCR',
+      area: 'Hauz Khas Artisan Bakery [Demo]',
+      lat: 28.5494,
+      lon: 77.2001,
+      safe_minutes: 720,
+      food_category: 'dry snacks',
+      status: 'Matched',
+      match_id: 'rec-delhi-shelter',
+      stage: 1,
+      source: 'Web',
+      otp: Math.floor(1000 + Math.random() * 9000).toString(),
+      created_at: new Date(Date.now() - 30 * 60000).toISOString()
+    },
+    {
+      food: '[Demo] 100 Meals — Sambhar Rice & Veg Poriyal',
+      qty: 100,
+      donor_type: 'Restaurant',
+      city: 'Bengaluru',
+      area: 'Indiranagar Tech Cafe [Demo]',
+      lat: 12.9784,
+      lon: 77.6408,
+      safe_minutes: 240,
+      food_category: 'cooked rice/dal',
+      status: 'Posted',
+      stage: 1,
+      source: 'Web',
+      otp: Math.floor(1000 + Math.random() * 9000).toString(),
+      created_at: new Date(Date.now() - 10 * 60000).toISOString()
+    },
+    {
+      food: '[Demo] 50 Boxes — Whole Wheat Bread & Pav',
+      qty: 50,
+      donor_type: 'Mess',
+      city: 'Bengaluru',
+      area: 'Whitefield Campus Cafeteria [Demo]',
+      lat: 12.9698,
+      lon: 77.7499,
+      safe_minutes: 360,
+      food_category: 'dry snacks',
+      status: 'Matched',
+      match_id: 'rec-blr-shelter',
+      stage: 1,
+      source: 'Helpline',
+      otp: Math.floor(1000 + Math.random() * 9000).toString(),
+      created_at: new Date(Date.now() - 45 * 60000).toISOString()
+    }
+  ];
+
+  try {
+    if (sbClient) {
+      const { data, error } = await sbClient.from('donations').insert(sampleBatches).select();
+      if (!error && data) {
+        allDonations = [...data, ...allDonations];
+      } else {
+        sampleBatches.forEach(b => {
+          b.id = 'demo-' + Math.random().toString(36).substring(2, 9);
+        });
+        allDonations = [...sampleBatches, ...allDonations];
+      }
+    } else {
+      sampleBatches.forEach(b => {
+        b.id = 'demo-' + Math.random().toString(36).substring(2, 9);
+      });
+      allDonations = [...sampleBatches, ...allDonations];
+    }
+
+    if (allDonations.length > 0) {
+      currentLiveDispatch = allDonations[0];
+      renderDispatchCard(currentLiveDispatch);
+    }
+    renderRealtimeTable();
+    recalculateDashboardMetrics();
+    renderMapData();
+
+    showToast('🌱 6 demo surplus food batches seeded across Jaipur, Delhi NCR, and Bengaluru!');
+
+    // If shelter results view is open, live re-match immediately
+    if (lastShelterRequest) {
+      const matchData = findDonationsForShelterRequest(lastShelterRequest);
+      renderShelterMatchResults(matchData, lastShelterRequest);
+    }
+  } catch (err) {
+    console.error('[Demo Seed Error]:', err);
+    showToast('Notice: Demo donations added locally.');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = origHtml || '<span>🌱 Seed Demo Data (Admin)</span>';
+    }
+  }
+}
+
+/**
+ * Checks if the currently logged in user has admin role and toggles admin demo buttons
+ */
+async function checkAdminPresence() {
+  let isAdmin = false;
+  try {
+    const raw = localStorage.getItem('sahakara_admin_user');
+    if (raw) {
+      const u = JSON.parse(raw);
+      if (u && (u.role === 'admin' || u.role === 'superadmin')) {
+        isAdmin = true;
+      }
+    }
+    if (!isAdmin && sbClient) {
+      const { data } = await sbClient.auth.getSession();
+      if (data?.session?.user) {
+        const { data: prof } = await sbClient
+          .from('profiles')
+          .select('role')
+          .eq('id', data.session.user.id)
+          .maybeSingle();
+        if (prof && (prof.role === 'admin' || prof.role === 'superadmin')) {
+          isAdmin = true;
+        }
+      }
+    }
+  } catch (e) {
+    console.debug('[Admin Check]', e);
+  }
+
+  const navBtn = document.getElementById('btn-seed-demo-nav');
+  const shelterBtn = document.getElementById('btn-seed-demo-shelter');
+  const resultsBtn = document.getElementById('btn-seed-demo-results');
+  if (navBtn) navBtn.style.display = isAdmin ? 'inline-flex' : 'none';
+  if (shelterBtn) shelterBtn.style.display = isAdmin ? 'inline-flex' : 'none';
+  if (resultsBtn) resultsBtn.style.display = isAdmin ? 'inline-flex' : 'none';
+  return isAdmin;
+}
+
+window.seedDemoDonationsQuick = seedDemoDonationsQuick;
+window.backToShelterReqForm = backToShelterReqForm;
+window.claimDonationForShelter = claimDonationForShelter;
+window.checkAdminPresence = checkAdminPresence;
 
 /* ==========================================================================
    6. HELPLINE & IVR DIAL-PAD SIMULATOR

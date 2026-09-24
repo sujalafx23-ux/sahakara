@@ -230,13 +230,6 @@ async function loadAdminAuditLogs() {
     } catch (e) {}
   }
 
-  adminAuditLogs = [];
-}
-        return;
-      }
-    } catch (e) {}
-  }
-
   adminAuditLogs = [
     {
       id: 'log-01',
@@ -1094,3 +1087,139 @@ function renderNotifications() {
     }
   }
 }
+
+/* ==========================================================================
+   QUICK SEED DEMO DONATIONS (FOR ADMIN LIVE DEMOS)
+   ========================================================================== */
+async function seedDemoDonationsQuick(e) {
+  if (e && e.preventDefault) e.preventDefault();
+  const btn = e?.currentTarget;
+  const origHtml = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span>🌱 Seeding 6 Batches...</span>';
+  }
+
+  const sampleBatches = [
+    {
+      food: '[Demo] 45 Hot Meals — Dal Fry & Steamed Rice',
+      qty: 45,
+      donor_type: 'Mess',
+      city: 'Jaipur',
+      area: 'Mansarovar Campus Canteen [Demo]',
+      lat: 26.8530,
+      lon: 75.7680,
+      safe_minutes: 240,
+      food_category: 'cooked rice/dal',
+      status: 'Posted',
+      stage: 1,
+      source: 'Web',
+      otp: Math.floor(1000 + Math.random() * 9000).toString(),
+      created_at: new Date().toISOString()
+    },
+    {
+      food: '[Demo] 80 Meals — Rajma Chawal & Chapati',
+      qty: 80,
+      donor_type: 'Restaurant',
+      city: 'Jaipur',
+      area: 'C-Scheme Dining Hall [Demo]',
+      lat: 26.9120,
+      lon: 75.8050,
+      safe_minutes: 240,
+      food_category: 'cooked rice/dal',
+      status: 'Matched',
+      match_id: 'rec-ananda',
+      stage: 1,
+      source: 'Web',
+      otp: Math.floor(1000 + Math.random() * 9000).toString(),
+      created_at: new Date(Date.now() - 20 * 60000).toISOString()
+    },
+    {
+      food: '[Demo] 60 Meals — Chana Masala & Pulao',
+      qty: 60,
+      donor_type: 'Mess',
+      city: 'Delhi NCR',
+      area: 'Connaught Place Central Hub [Demo]',
+      lat: 28.6315,
+      lon: 77.2167,
+      safe_minutes: 240,
+      food_category: 'cooked rice/dal',
+      status: 'Posted',
+      stage: 1,
+      source: 'SMS',
+      otp: Math.floor(1000 + Math.random() * 9000).toString(),
+      created_at: new Date(Date.now() - 15 * 60000).toISOString()
+    },
+    {
+      food: '[Demo] 35 Packs — Bakery Sandwiches & Buns',
+      qty: 35,
+      donor_type: 'Restaurant',
+      city: 'Delhi NCR',
+      area: 'Hauz Khas Artisan Bakery [Demo]',
+      lat: 28.5494,
+      lon: 77.2001,
+      safe_minutes: 720,
+      food_category: 'dry snacks',
+      status: 'Matched',
+      match_id: 'rec-delhi-shelter',
+      stage: 1,
+      source: 'Web',
+      otp: Math.floor(1000 + Math.random() * 9000).toString(),
+      created_at: new Date(Date.now() - 30 * 60000).toISOString()
+    },
+    {
+      food: '[Demo] 100 Meals — Sambhar Rice & Veg Poriyal',
+      qty: 100,
+      donor_type: 'Restaurant',
+      city: 'Bengaluru',
+      area: 'Indiranagar Tech Cafe [Demo]',
+      lat: 12.9784,
+      lon: 77.6408,
+      safe_minutes: 240,
+      food_category: 'cooked rice/dal',
+      status: 'Posted',
+      stage: 1,
+      source: 'Web',
+      otp: Math.floor(1000 + Math.random() * 9000).toString(),
+      created_at: new Date(Date.now() - 10 * 60000).toISOString()
+    },
+    {
+      food: '[Demo] 50 Boxes — Whole Wheat Bread & Pav',
+      qty: 50,
+      donor_type: 'Mess',
+      city: 'Bengaluru',
+      area: 'Whitefield Campus Cafeteria [Demo]',
+      lat: 12.9698,
+      lon: 77.7499,
+      safe_minutes: 360,
+      food_category: 'dry snacks',
+      status: 'Matched',
+      match_id: 'rec-blr-shelter',
+      stage: 1,
+      source: 'Helpline',
+      otp: Math.floor(1000 + Math.random() * 9000).toString(),
+      created_at: new Date(Date.now() - 45 * 60000).toISOString()
+    }
+  ];
+
+  try {
+    if (sbAdmin) {
+      const { error } = await sbAdmin.from('donations').insert(sampleBatches);
+      if (error) console.warn('[Admin Seed Notice]:', error.message);
+    }
+
+    await loadAdminDonations();
+    renderOverviewMetrics();
+    renderOverviewCharts();
+    renderDonationsTable();
+    renderLadderBoard();
+  } catch (err) {
+    console.error('[Admin Seed Error]:', err);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = origHtml || '<span>🌱 Seed Demo Donations</span>';
+    }
+  }
+}
+

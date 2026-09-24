@@ -57,6 +57,9 @@
 
       <!-- Action Buttons -->
       <div class="nav-actions" id="nav-actions-container">
+        <button type="button" class="btn btn-secondary btn-sm" id="btn-seed-demo-nav" onclick="seedDemoDonationsQuick(event)" style="display:none;background:#FEF3C7;color:#92400E;border-color:#FDE68A;">
+          <span>🌱 Seed Demo Donations</span>
+        </button>
         <button type="button" class="btn btn-ghost" id="btn-nav-signin" onclick="openSignInModal()">Sign in</button>
         <button type="button" class="btn btn-secondary btn-sm" onclick="openShelterRequestModal()">Request Food (Shelter)</button>
         <button type="button" class="btn btn-primary" onclick="openPostModal()">
@@ -1286,80 +1289,112 @@
         <div>
           <span class="modal-kicker" style="color:var(--brand-terracotta);">NON-PROFIT WELFARE NETWORK</span>
           <h2 id="shelter-req-title" class="modal-heading">Request Food for Your Shelter</h2>
-          <p class="modal-subheading">Registered ashrams, community kitchens, and gaushalas can request surplus food batches from commercial donors.</p>
+          <p class="modal-subheading" id="shelter-req-sub">Registered ashrams, community kitchens, and gaushalas can request surplus food batches from commercial donors.</p>
         </div>
         <button type="button" class="modal-close-btn" onclick="closeShelterRequestModal()">&times;</button>
       </div>
 
-      <form id="shelter-request-form" onsubmit="handleShelterRequestSubmit(event)">
-        <div class="modal-body-form">
-          <div class="form-row">
-            <div class="form-group" style="flex:2;">
-              <label for="req-shelter-name" class="form-label">Shelter / Organization Name *</label>
-              <input type="text" id="req-shelter-name" class="form-input" placeholder="e.g. Apna Ghar Ashram, Robin Hood Army" required>
+      <!-- VIEW 1: Shelter Requisition Form -->
+      <div id="shelter-req-form-view">
+        <form id="shelter-request-form" onsubmit="handleShelterRequestSubmit(event)">
+          <div class="modal-body-form">
+            <div class="form-row">
+              <div class="form-group" style="flex:2;">
+                <label for="req-shelter-name" class="form-label">Shelter / Organization Name *</label>
+                <input type="text" id="req-shelter-name" class="form-input" placeholder="e.g. Apna Ghar Ashram, Robin Hood Army" required>
+              </div>
+              <div class="form-group" style="flex:1;">
+                <label for="req-shelter-type" class="form-label">Facility Type *</label>
+                <select id="req-shelter-type" class="form-select" required>
+                  <option value="shelter">Human Shelter / Ashram</option>
+                  <option value="gaushala">Gaushala / Cattle Sanctuary</option>
+                  <option value="compost">Community Kitchen / Mess</option>
+                </select>
+              </div>
             </div>
-            <div class="form-group" style="flex:1;">
-              <label for="req-shelter-type" class="form-label">Facility Type *</label>
-              <select id="req-shelter-type" class="form-select" required>
-                <option value="shelter">Human Shelter / Ashram</option>
-                <option value="gaushala">Gaushala / Cattle Sanctuary</option>
-                <option value="compost">Community Kitchen / Mess</option>
-              </select>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="req-shelter-city" class="form-label">Operating City Cluster *</label>
+                <select id="req-shelter-city" class="form-select" required>
+                  <option value="Jaipur">Jaipur (Live)</option>
+                  <option value="Delhi NCR">Delhi NCR (Live)</option>
+                  <option value="Bengaluru">Bengaluru (Live)</option>
+                  <option value="Mumbai">Mumbai (Coming soon)</option>
+                  <option value="Hyderabad">Hyderabad (Coming soon)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="req-shelter-meals" class="form-label">Meals Needed Today (Persons) *</label>
+                <input type="number" id="req-shelter-meals" class="form-input" min="10" max="5000" value="80" placeholder="e.g. 80" required>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="req-food-preference" class="form-label">Preferred Food Category *</label>
+                <select id="req-food-preference" class="form-select" required>
+                  <option value="Cooked Dinner">Cooked Dinner (Rice, Dal, Roti)</option>
+                  <option value="Cooked Lunch">Cooked Lunch (Hot Prepared Food)</option>
+                  <option value="Dry Rations">Dry Pantry / Grains &amp; Bakery</option>
+                  <option value="Raw Produce">Raw Vegetables &amp; Fruits (Gaushala / Kitchen)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="req-contact-phone" class="form-label">Coordinator Contact Phone *</label>
+                <input type="tel" id="req-contact-phone" class="form-input" placeholder="+91 98765 43210" value="+91 98290 12345" required>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="req-shelter-address" class="form-label">Delivery Dock / Intake Address *</label>
+              <input type="text" id="req-shelter-address" class="form-input" placeholder="e.g. Sector 5, Durgapura, Near Gaushala Gate" value="Bani Park Shelter Wing, Jaipur" required>
+            </div>
+
+            <div class="form-group">
+              <label for="req-special-notes" class="form-label">Dietary or Delivery Intake Notes</label>
+              <textarea id="req-special-notes" class="form-input" rows="2" placeholder="e.g. Daily intake before 20:30 PM. Vegetarian only. Cold storage available."></textarea>
             </div>
           </div>
 
-          <div class="form-row">
-            <div class="form-group">
-              <label for="req-shelter-city" class="form-label">Operating City Cluster *</label>
-              <select id="req-shelter-city" class="form-select" required>
-                <option value="Jaipur">Jaipur (Live)</option>
-                <option value="Delhi NCR">Delhi NCR (Live)</option>
-                <option value="Bengaluru">Bengaluru (Live)</option>
-                <option value="Mumbai">Mumbai (Coming soon)</option>
-                <option value="Hyderabad">Hyderabad (Coming soon)</option>
-              </select>
+          <div class="modal-footer" style="justify-content:space-between;flex-wrap:wrap;gap:8px;">
+            <div style="display:flex;gap:8px;align-items:center;">
+              <button type="button" class="btn btn-secondary" onclick="closeShelterRequestModal()">Cancel</button>
+              <button type="button" class="btn btn-ghost btn-sm" id="btn-seed-demo-shelter" onclick="seedDemoDonationsQuick(event)" style="display:none;color:#B45309;font-size:0.75rem;background:#FEF3C7;border:1px solid #FDE68A;">
+                <span>🌱 Seed Demo Donations (Admin)</span>
+              </button>
             </div>
-            <div class="form-group">
-              <label for="req-shelter-meals" class="form-label">Meals Needed Today (Persons) *</label>
-              <input type="number" id="req-shelter-meals" class="form-input" min="10" max="5000" placeholder="e.g. 80" required>
-            </div>
+            <button type="submit" class="btn btn-primary" id="btn-submit-shelter-req">
+              <span>Find Matching Surplus Food &rarr;</span>
+            </button>
           </div>
+        </form>
+      </div>
 
-          <div class="form-row">
-            <div class="form-group">
-              <label for="req-food-preference" class="form-label">Preferred Food Category *</label>
-              <select id="req-food-preference" class="form-select" required>
-                <option value="Cooked Dinner">Cooked Dinner (Rice, Dal, Roti)</option>
-                <option value="Cooked Lunch">Cooked Lunch (Hot Prepared Food)</option>
-                <option value="Dry Rations">Dry Pantry / Grains &amp; Bakery</option>
-                <option value="Raw Produce">Raw Vegetables &amp; Fruits (Gaushala / Kitchen)</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label for="req-contact-phone" class="form-label">Coordinator Contact Phone *</label>
-              <input type="tel" id="req-contact-phone" class="form-input" placeholder="+91 98765 43210" required>
-            </div>
+      <!-- VIEW 2: Progressive Matching Results View -->
+      <div id="shelter-req-results-view" style="display:none;">
+        <div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+          <div>
+            <span style="font-size:0.75rem;color:var(--text-muted);font-weight:600;text-transform:uppercase;">Matched For</span>
+            <div id="shelter-criteria-display" style="font-size:0.875rem;font-weight:700;color:var(--text-primary);margin-top:2px;">Jaipur &bull; 80 Meals &bull; Cooked Dinner</div>
           </div>
-
-          <div class="form-group">
-            <label for="req-shelter-address" class="form-label">Delivery Dock / Intake Address *</label>
-            <input type="text" id="req-shelter-address" class="form-input" placeholder="e.g. Sector 5, Durgapura, Near Gaushala Gate" required>
-          </div>
-
-          <div class="form-group">
-            <label for="req-special-notes" class="form-label">Dietary or Delivery Intake Notes</label>
-            <textarea id="req-special-notes" class="form-input" rows="2" placeholder="e.g. Daily intake before 20:30 PM. Vegetarian only. Cold storage available."></textarea>
-          </div>
+          <div id="shelter-results-count-badge" style="background:#DEF7EC;color:#03543F;font-weight:700;font-size:0.75rem;padding:4px 10px;border-radius:12px;">Available Batches</div>
         </div>
 
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" onclick="closeShelterRequestModal()">Cancel</button>
-          <button type="submit" class="btn btn-primary" id="btn-submit-shelter-req">
-            <span>Broadcast Requisition to Network</span>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-          </button>
+        <!-- Dynamic Results List -->
+        <div class="shelter-match-results" id="shelter-match-results-list"></div>
+
+        <div class="modal-footer" style="justify-content:space-between;margin-top:16px;flex-wrap:wrap;gap:8px;">
+          <button type="button" class="btn btn-secondary" onclick="backToShelterReqForm()">&larr; Modify Request Criteria</button>
+          <div style="display:flex;gap:8px;">
+            <button type="button" class="btn btn-ghost btn-sm" id="btn-seed-demo-results" onclick="seedDemoDonationsQuick(event)" style="display:none;color:#B45309;font-size:0.75rem;background:#FEF3C7;border:1px solid #FDE68A;">
+              <span>🌱 Seed Demo Data (Admin)</span>
+            </button>
+            <button type="button" class="btn btn-primary btn-sm" onclick="closeShelterRequestModal()">Done</button>
+          </div>
         </div>
-      </form>
+      </div>
+
     </div>
   </div>
 

@@ -3290,3 +3290,112 @@ a {
   color: #92400E;
   border-color: #FDE68A;
 }
+
+/* Shelter Match Results Styling */
+.shelter-match-results {
+  margin-top: 16px;
+  max-height: 440px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-right: 4px;
+}
+
+.match-result-card {
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm, 8px);
+  padding: 16px;
+  background: #FFFFFF;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.match-result-card:hover {
+  border-color: var(--brand-green);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+}
+
+.match-result-card.is-sample {
+  background: #F8FAFC;
+  border: 1px dashed #94A3B8;
+}
+
+.match-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.match-card-title {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.match-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: var(--radius-pill, 9999px);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.match-badge.match-exact {
+  background: #DEF7EC;
+  color: #03543F;
+  border: 1px solid #BCF0DA;
+}
+
+.match-badge.match-flexible {
+  background: #E0E7FF;
+  color: #3730A3;
+  border: 1px solid #C7D2FE;
+}
+
+.match-badge.match-cluster {
+  background: #FEF3C7;
+  color: #92400E;
+  border: 1px solid #FDE68A;
+}
+
+.match-badge.match-best {
+  background: #FFEDD5;
+  color: #9A3412;
+  border: 1px solid #FED7AA;
+}
+
+.match-badge.match-sample {
+  background: #F1F5F9;
+  color: #475569;
+  border: 1px dashed #94A3B8;
+}
+
+.match-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  flex-wrap: wrap;
+}
+
+.match-card-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 4px;
+  padding-top: 10px;
+  border-top: 1px solid #F1F5F9;
+}
+
