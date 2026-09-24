@@ -16,7 +16,7 @@
   <link rel="stylesheet" href="../vendor/leaflet.css">
   <link rel="stylesheet" href="admin.css">
 </head>
-<body class="admin-body">
+<body class="admin-body" style="opacity: 0; transition: opacity 0.15s ease;">
 
   <!-- Sidebar Navigation -->
   <aside class="admin-sidebar" id="admin-sidebar">
@@ -193,7 +193,7 @@
         <div class="admin-card">
           <div class="admin-card-header">
             <h3 class="admin-card-title">14-Day Rescue Velocity (Donations / Day)</h3>
-            <span style="font-size:0.75rem;color:var(--text-muted);font-family:var(--font-mono);">Trend: +28% WoW</span>
+            <span style="font-size:0.75rem;color:var(--text-muted);font-family:var(--font-mono);">Trend: +28% WoW <small style="font-size:0.625rem;background:#FEF3C7;color:#92400E;padding:2px 6px;border-radius:4px;font-weight:700;margin-left:4px;">Simulated</small></span>
           </div>
           <canvas id="chart-donations-trend" height="140" style="width:100%;max-height:240px;"></canvas>
         </div>

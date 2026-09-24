@@ -625,7 +625,9 @@ function recalculateDashboardMetrics() {
   const mealsEl = document.getElementById('stat-meals-count');
   const kgEl = document.getElementById('stat-kg-count');
   const citiesEl = document.getElementById('stat-cities-count');
+  const citiesUnitEl = document.getElementById('stat-cities-unit');
   const citiesTitleEl = document.getElementById('stat-cities-title');
+  const citiesDescEl = document.getElementById('stat-cities-desc');
   const dumpsterEl = document.getElementById('stat-dumpster-count');
 
   // Sum qty where status = 'Delivered'
@@ -638,9 +640,13 @@ function recalculateDashboardMetrics() {
 
   if (mealsEl) mealsEl.textContent = realRescuedMeals.toLocaleString('en-IN');
   if (kgEl) kgEl.textContent = totalKg.toLocaleString('en-IN');
-  if (citiesEl) citiesEl.textContent = liveCities.length;
-  if (citiesTitleEl && liveCities.length > 0) {
-    citiesTitleEl.textContent = `Live in ${liveCities.map((c) => c.name).slice(0, 3).join(', ')}`;
+  if (citiesEl) citiesEl.textContent = liveCities.length > 0 ? liveCities.length : 1;
+  if (citiesUnitEl) citiesUnitEl.textContent = liveCities.length > 1 ? 'active clusters' : 'pilot cluster';
+  if (citiesTitleEl) {
+    citiesTitleEl.textContent = 'Pilot city: Jaipur, expanding city by city';
+  }
+  if (citiesDescEl) {
+    citiesDescEl.textContent = `Pilot city: Jaipur, expanding city by city across nationwide urban logistics clusters.`;
   }
   if (dumpsterEl) dumpsterEl.textContent = expiredCount;
 }
@@ -672,7 +678,7 @@ function renderRealtimeTable() {
           <td><strong>${d.qty} Meals</strong> (${d.food_category || 'cooked'})</td>
           <td><span class="stage-tag s${stage}">Tier ${stage}</span></td>
           <td><span class="status-pill ${statusClass}">${d.status || 'Posted'}</span></td>
-          <td><span style="color:#0F7B5F;font-weight:500;">${tierCategory}</span> <small style="color:var(--text-muted);">(Protected)</small></td>
+          <td><span style="color:#0F7B5F;font-weight:500;">${tierCategory}</span> <small class="sim-badge">Demo data</small></td>
           <td><code style="letter-spacing:2px;color:var(--text-muted);">••••</code></td>
         </tr>
       `;
@@ -1143,7 +1149,7 @@ async function renderMapData() {
   if (activeFilter === 'all' || activeFilter === 'donor') {
     const donorMarker = L.marker(donorCoords, { icon: customIcon('donor') }).addTo(jaipurMap).bindPopup(`
       <div style="font-family:sans-serif;font-size:12px;min-width:180px;">
-        <strong style="font-size:13px;color:#111827;">Amity Campus Central Mess</strong><br>
+        <strong style="font-size:13px;color:#111827;">Amity Campus Central Mess</strong> <small style="font-size:10px;background:#F1F5F9;color:#475569;padding:1px 4px;border-radius:3px;font-weight:600;">Demo data</small><br>
         <span style="color:#D97706;font-weight:700;">DONOR KITCHEN</span><br>
         <span>Surplus Batch: <strong>40 Hot Meals</strong></span><br>
         <small style="color:#6B7280;">NH-11C, Kant Kalwar, Jaipur</small>
@@ -1158,10 +1164,10 @@ async function renderMapData() {
   if (activeFilter === 'all' || activeFilter === 'driver') {
     const driverMarker = L.marker(driverCoords, { icon: customIcon('driver') }).addTo(jaipurMap).bindPopup(`
       <div style="font-family:sans-serif;font-size:12px;min-width:180px;">
-        <strong style="font-size:13px;color:#111827;">Driver Vikram R. (EV-4419)</strong><br>
+        <strong style="font-size:13px;color:#111827;">Driver Vikram R. (EV-4419)</strong> <small style="font-size:10px;background:#FEF3C7;color:#92400E;padding:1px 4px;border-radius:3px;font-weight:600;">Simulated</small><br>
         <span style="color:#2563EB;font-weight:700;">ACTIVE EV CARRIER</span><br>
-        <span>En route &bull; Temp: <strong>64°C</strong> (Hot Bag)</span><br>
-        <small style="color:#6B7280;">Speed: 32 km/h &bull; Battery: 86%</small>
+        <span>En route &bull; Temp: <strong>64°C (Sim)</strong> (Hot Bag)</span><br>
+        <small style="color:#6B7280;">Speed: 32 km/h (Sim) &bull; Battery: 86% (Sim)</small>
       </div>
     `);
     mapMarkers.push(driverMarker);
@@ -1175,7 +1181,7 @@ async function renderMapData() {
       const coords = [rec.lat, rec.lon];
       const marker = L.marker(coords, { icon: customIcon(rec.type) }).addTo(jaipurMap).bindPopup(`
         <div style="font-family:sans-serif;font-size:12px;min-width:180px;">
-          <strong style="color:#111827;font-size:13px;">${rec.name}</strong><br>
+          <strong style="color:#111827;font-size:13px;">${rec.name}</strong> <small style="font-size:10px;background:#F1F5F9;color:#475569;padding:1px 4px;border-radius:3px;font-weight:600;">Demo Node</small><br>
           <span style="color:#0F7B5F;font-weight:700;">${rec.type.toUpperCase()} NODE</span><br>
           <span>Intake Capacity: <strong>${rec.capacity} meals</strong></span><br>
           <small style="color:#6B7280;">${rec.needs_note || rec.address || ''}</small>

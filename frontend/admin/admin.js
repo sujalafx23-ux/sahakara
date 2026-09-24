@@ -24,10 +24,19 @@ let activeAlerts = [];
    INITIALIZATION & AUTHENTICATION GUARD
    ========================================================================== */
 document.addEventListener('DOMContentLoaded', async () => {
-  checkAdminAuth();
   initSupabaseAdmin();
 
-  // Load Seed & Live Data
+  // Strict Auth Guard: Require Supabase Auth and role = 'admin' from profiles
+  const isAuthorized = await verifyAdminAuth();
+  if (!isAuthorized) {
+    redirectToAdminLogin();
+    return;
+  }
+
+  // Display admin portal body once authorized
+  document.body.style.opacity = '1';
+
+  // Load Seed & Live Data ONLY after admin auth is verified
   await Promise.all([
     loadAdminCities(),
     loadAdminRecipients(),
@@ -46,27 +55,63 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderAuditTable();
 });
 
-function checkAdminAuth() {
-  const stored = localStorage.getItem('sahakara_admin_user');
-  if (!stored) {
-    window.location.href = 'login.html';
-    return;
+async function verifyAdminAuth() {
+  if (!sbAdmin || !sbAdmin.auth) {
+    console.warn('[Admin Guard] Supabase client unavailable.');
+    return false;
   }
 
   try {
-    currentAdmin = JSON.parse(stored);
-    if (currentAdmin.role !== 'admin') {
-      window.location.href = 'login.html';
-      return;
+    // 1. Require active Supabase Auth user session
+    const { data: { user }, error: authError } = await sbAdmin.auth.getUser();
+    if (authError || !user) {
+      console.warn('[Admin Guard] No active Supabase Auth session.');
+      return false;
     }
+
+    // 2. Require role = 'admin' from public.profiles table
+    const { data: profile, error: profileError } = await sbAdmin
+      .from('profiles')
+      .select('id, email, role, name')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (profileError) {
+      console.error('[Admin Guard] Failed to query profiles table:', profileError.message);
+      return false;
+    }
+
+    const role = profile?.role || user.user_metadata?.role;
+    if (role !== 'admin') {
+      console.warn('[Admin Guard] Access denied: User role is not admin:', role);
+      return false;
+    }
+
+    currentAdmin = {
+      id: user.id,
+      email: user.email || profile?.email,
+      name: profile?.name || user.user_metadata?.name || 'Administrator',
+      role: 'admin'
+    };
 
     const nameEl = document.getElementById('sidebar-admin-name');
     const emailEl = document.getElementById('sidebar-admin-email');
-    if (nameEl) nameEl.textContent = currentAdmin.name || 'Logistics Admin';
-    if (emailEl) emailEl.textContent = currentAdmin.email || 'admin@sahakara.org';
-  } catch (e) {
-    window.location.href = 'login.html';
+    if (nameEl) nameEl.textContent = currentAdmin.name;
+    if (emailEl) emailEl.textContent = currentAdmin.email;
+
+    localStorage.setItem('sahakara_admin_user', JSON.stringify(currentAdmin));
+    return true;
+  } catch (err) {
+    console.error('[Admin Guard] Verification exception:', err);
+    return false;
   }
+}
+
+function redirectToAdminLogin() {
+  localStorage.removeItem('sahakara_admin_user');
+  localStorage.removeItem('sahakara_admin_token');
+  const target = window.location.pathname.startsWith('/admin') ? '/admin/login' : 'login.html';
+  window.location.replace(target);
 }
 
 function adminLogout() {
@@ -75,7 +120,7 @@ function adminLogout() {
   if (sbAdmin && sbAdmin.auth) {
     sbAdmin.auth.signOut().catch(() => {});
   }
-  window.location.href = 'login.html';
+  redirectToAdminLogin();
 }
 
 function initSupabaseAdmin() {

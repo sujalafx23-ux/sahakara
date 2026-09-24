@@ -131,21 +131,24 @@ ALTER TABLE public.audit_log ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Public read cities" ON public.cities;
 DROP POLICY IF EXISTS "Admin write cities" ON public.cities;
 CREATE POLICY "Public read cities" ON public.cities FOR SELECT USING (true);
-CREATE POLICY "Admin write cities" ON public.cities FOR ALL USING (public.is_admin() OR auth.role() = 'service_role' OR auth.role() = 'anon');
+CREATE POLICY "Admin write cities" ON public.cities FOR ALL USING (public.is_admin() OR auth.role() = 'service_role');
 
 -- 2. PROFILES POLICIES
 DROP POLICY IF EXISTS "Read profiles" ON public.profiles;
 DROP POLICY IF EXISTS "Write profiles" ON public.profiles;
-CREATE POLICY "Read profiles" ON public.profiles FOR SELECT USING (auth.uid() = id OR public.is_admin() OR auth.role() = 'service_role' OR auth.role() = 'anon');
-CREATE POLICY "Write profiles" ON public.profiles FOR ALL USING (auth.uid() = id OR public.is_admin() OR auth.role() = 'service_role' OR auth.role() = 'anon');
+CREATE POLICY "Read profiles" ON public.profiles FOR SELECT USING (auth.uid() = id OR public.is_admin() OR auth.role() = 'service_role');
+CREATE POLICY "Write profiles" ON public.profiles FOR ALL USING (auth.uid() = id OR public.is_admin() OR auth.role() = 'service_role');
 
 -- 3. RECIPIENTS POLICIES
 DROP POLICY IF EXISTS "Public read recipients" ON public.recipients;
 DROP POLICY IF EXISTS "Public insert recipients" ON public.recipients;
 DROP POLICY IF EXISTS "Admin modify recipients" ON public.recipients;
+DROP POLICY IF EXISTS "Admin update recipients" ON public.recipients;
+DROP POLICY IF EXISTS "Admin delete recipients" ON public.recipients;
 CREATE POLICY "Public read recipients" ON public.recipients FOR SELECT USING (true);
 CREATE POLICY "Public insert recipients" ON public.recipients FOR INSERT WITH CHECK (true);
-CREATE POLICY "Admin modify recipients" ON public.recipients FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Admin update recipients" ON public.recipients FOR UPDATE USING (public.is_admin() OR auth.role() = 'service_role') WITH CHECK (public.is_admin() OR auth.role() = 'service_role');
+CREATE POLICY "Admin delete recipients" ON public.recipients FOR DELETE USING (public.is_admin() OR auth.role() = 'service_role');
 
 -- 4. DONATIONS POLICIES
 DROP POLICY IF EXISTS "Public read donations" ON public.donations;
@@ -156,8 +159,10 @@ CREATE POLICY "Public write donations" ON public.donations FOR ALL USING (true) 
 -- 5. AUDIT LOG POLICIES
 DROP POLICY IF EXISTS "Public read audit_log" ON public.audit_log;
 DROP POLICY IF EXISTS "Public write audit_log" ON public.audit_log;
-CREATE POLICY "Public read audit_log" ON public.audit_log FOR SELECT USING (true);
-CREATE POLICY "Public write audit_log" ON public.audit_log FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Admin read audit_log" ON public.audit_log;
+DROP POLICY IF EXISTS "Admin insert audit_log" ON public.audit_log;
+CREATE POLICY "Admin read audit_log" ON public.audit_log FOR SELECT USING (public.is_admin() OR auth.role() = 'service_role');
+CREATE POLICY "Admin insert audit_log" ON public.audit_log FOR INSERT WITH CHECK (public.is_admin() OR auth.role() = 'service_role' OR auth.uid() IS NOT NULL);
 
 -- ==============================================================================
 -- REALTIME PUBLICATIONS (IDEMPOTENT)
