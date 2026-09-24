@@ -57,6 +57,7 @@
       <!-- Action Buttons -->
       <div class="nav-actions" id="nav-actions-container">
         <button type="button" class="btn btn-ghost" id="btn-nav-signin" onclick="openSignInModal()">Sign in</button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="openShelterRequestModal()">Request Food (Shelter)</button>
         <button type="button" class="btn btn-primary" onclick="openPostModal()">
           <span>Post surplus food</span>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
@@ -87,9 +88,12 @@
               <span>Post surplus food</span>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
             </button>
-            <a href="tel:18002024490" class="btn btn-secondary btn-lg">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-              <span>Call helpline (1800 202 4490)</span>
+            <button type="button" class="btn btn-secondary btn-lg" onclick="openShelterRequestModal()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+              <span>Shelter: Request Food</span>
+            </button>
+            <a href="tel:18002024490" class="btn btn-ghost btn-lg" style="color:var(--text-muted);">
+              <span>1800 202 4490 (Toll-Free)</span>
             </a>
           </div>
 
@@ -179,16 +183,16 @@
                   </div>
                 </div>
 
-                <!-- Match & Driver Meta Grid -->
+                <!-- Match & Logistics Meta Grid (Privacy Protected for Public Viewers) -->
                 <div class="dispatch-meta-grid">
                   <div class="meta-box">
                     <div class="meta-icon">
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
                     </div>
                     <div>
-                      <span class="meta-title">Target Rescue Node</span>
-                      <strong class="meta-value" id="card-destination">Nearest Verified Shelter</strong>
-                      <span class="meta-sub" id="card-destination-sub">Dynamic 4-Tier Ladder of Last Resort</span>
+                      <span class="meta-title">Matched Rescue Node</span>
+                      <strong class="meta-value" id="card-destination">Tier 01 Human Shelter (Privacy Protected)</strong>
+                      <span class="meta-sub" id="card-destination-sub">Full shelter routing &amp; intake managed via Admin Portal</span>
                     </div>
                   </div>
 
@@ -197,25 +201,10 @@
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
                     </div>
                     <div>
-                      <span class="meta-title">Assigned Driver</span>
-                      <strong class="meta-value" id="card-driver-name">Volunteer Carrier Network</strong>
-                      <span class="meta-sub" id="card-driver-sub">Realtime dispatch &bull; Handover OTP: <strong id="card-otp-code" style="color:var(--brand-green);font-family:var(--font-mono);">----</strong></span>
+                      <span class="meta-title">Rescue Logistics Status</span>
+                      <strong class="meta-value" id="card-driver-name">Automated Carrier Routing</strong>
+                      <span class="meta-sub" id="card-driver-sub">Realtime dispatch &bull; Secure OTP Handover Active</span>
                     </div>
-                  </div>
-                </div>
-
-                <!-- Driver Live Actions (Supabase Realtime Sync) -->
-                <div class="driver-live-actions" id="driver-actions-bar">
-                  <span class="driver-actions-label">🛵 Driver Realtime Actions:</span>
-                  <div class="driver-btn-group">
-                    <button type="button" class="btn-action-pickup" id="btn-driver-pickup" onclick="triggerDriverPickup()">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                      <span>1. Confirm Picked Up (Enter OTP)</span>
-                    </button>
-                    <button type="button" class="btn-action-deliver" id="btn-driver-deliver" onclick="triggerDriverDelivery()">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                      <span>2. Confirm Delivered</span>
-                    </button>
                   </div>
                 </div>
 
@@ -1288,6 +1277,88 @@
       </div>
 
     </div>
+  <!-- Modal: Shelter Food Requisition ("Shelters can ask food") -->
+  <div class="modal-backdrop" id="modal-shelter-request" role="dialog" aria-modal="true" aria-labelledby="shelter-req-title" hidden>
+    <div class="modal-dialog modal-dialog-lg">
+      <div class="modal-header">
+        <div>
+          <span class="modal-kicker" style="color:var(--brand-terracotta);">NON-PROFIT WELFARE NETWORK</span>
+          <h2 id="shelter-req-title" class="modal-heading">Request Food for Your Shelter</h2>
+          <p class="modal-subheading">Registered ashrams, community kitchens, and gaushalas can request surplus food batches from commercial donors.</p>
+        </div>
+        <button type="button" class="modal-close-btn" onclick="closeShelterRequestModal()">&times;</button>
+      </div>
+
+      <form id="shelter-request-form" onsubmit="handleShelterRequestSubmit(event)">
+        <div class="modal-body-form">
+          <div class="form-row">
+            <div class="form-group" style="flex:2;">
+              <label for="req-shelter-name" class="form-label">Shelter / Organization Name *</label>
+              <input type="text" id="req-shelter-name" class="form-input" placeholder="e.g. Apna Ghar Ashram, Robin Hood Army" required>
+            </div>
+            <div class="form-group" style="flex:1;">
+              <label for="req-shelter-type" class="form-label">Facility Type *</label>
+              <select id="req-shelter-type" class="form-select" required>
+                <option value="shelter">Human Shelter / Ashram</option>
+                <option value="gaushala">Gaushala / Cattle Sanctuary</option>
+                <option value="compost">Community Kitchen / Mess</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="req-shelter-city" class="form-label">Operating City Cluster *</label>
+              <select id="req-shelter-city" class="form-select" required>
+                <option value="Jaipur">Jaipur (Live)</option>
+                <option value="Delhi NCR">Delhi NCR (Live)</option>
+                <option value="Bengaluru">Bengaluru (Live)</option>
+                <option value="Mumbai">Mumbai (Coming soon)</option>
+                <option value="Hyderabad">Hyderabad (Coming soon)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="req-shelter-meals" class="form-label">Meals Needed Today (Persons) *</label>
+              <input type="number" id="req-shelter-meals" class="form-input" min="10" max="5000" placeholder="e.g. 80" required>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="req-food-preference" class="form-label">Preferred Food Category *</label>
+              <select id="req-food-preference" class="form-select" required>
+                <option value="Cooked Dinner">Cooked Dinner (Rice, Dal, Roti)</option>
+                <option value="Cooked Lunch">Cooked Lunch (Hot Prepared Food)</option>
+                <option value="Dry Rations">Dry Pantry / Grains &amp; Bakery</option>
+                <option value="Raw Produce">Raw Vegetables &amp; Fruits (Gaushala / Kitchen)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="req-contact-phone" class="form-label">Coordinator Contact Phone *</label>
+              <input type="tel" id="req-contact-phone" class="form-input" placeholder="+91 98765 43210" required>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="req-shelter-address" class="form-label">Delivery Dock / Intake Address *</label>
+            <input type="text" id="req-shelter-address" class="form-input" placeholder="e.g. Sector 5, Durgapura, Near Gaushala Gate" required>
+          </div>
+
+          <div class="form-group">
+            <label for="req-special-notes" class="form-label">Dietary or Delivery Intake Notes</label>
+            <textarea id="req-special-notes" class="form-input" rows="2" placeholder="e.g. Daily intake before 20:30 PM. Vegetarian only. Cold storage available."></textarea>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeShelterRequestModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="btn-submit-shelter-req">
+            <span>Broadcast Requisition to Network</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </button>
+        </div>
+      </form>
+    </div>
   </div>
 
   <!-- Notice Modal -->
@@ -1408,9 +1479,9 @@
   </div>
 
   <!-- Supabase JS SDK, Configurations & Matching Engine (Local Vendor) -->
-  <script src="vendor/supabase.js?v=2.0.1"></script>
-  <script src="config.js?v=2.0.1"></script>
-  <script src="matching.js?v=2.0.1"></script>
-  <script src="script.js?v=2.0.1"></script>
+  <script src="vendor/supabase.js?v=2.0.2"></script>
+  <script src="config.js?v=2.0.2"></script>
+  <script src="matching.js?v=2.0.2"></script>
+  <script src="script.js?v=2.0.2"></script>
 </body>
 </html>

@@ -550,7 +550,7 @@ async function triggerDriverDelivery() {
 }
 
 /* ==========================================================================
-   4. HERO LIVE DISPATCH CARD RENDERER
+   4. HERO LIVE DISPATCH CARD RENDERER (PRIVACY PROTECTED FOR PUBLIC VIEWERS)
    ========================================================================== */
 function renderDispatchCard(dispatch) {
   if (!dispatch) return;
@@ -559,23 +559,34 @@ function renderDispatchCard(dispatch) {
   const qtyEl = document.getElementById('card-qty');
   const donorEl = document.getElementById('card-donor-name');
   const destEl = document.getElementById('card-destination');
-  const statusBadge = document.getElementById('card-status-badge');
-  const otpCodeEl = document.getElementById('card-otp-code');
+  const destSubEl = document.getElementById('card-destination-sub');
+  const driverNameEl = document.getElementById('card-driver-name');
+  const driverSubEl = document.getElementById('card-driver-sub');
   const stagePill = document.getElementById('card-stage-pill');
 
   if (titleEl) titleEl.textContent = dispatch.food || 'Surplus Food Batch';
   if (qtyEl) qtyEl.textContent = `${dispatch.qty} Meals`;
   if (donorEl) donorEl.textContent = `Posted by ${dispatch.area || 'Commercial Donor'}`;
-  if (otpCodeEl) otpCodeEl.textContent = dispatch.otp || '4419';
 
-  // Find matched recipient details
-  const matched = allRecipients.find((r) => r.id === dispatch.match_id) || allRecipients[0];
-  if (destEl && matched) {
-    destEl.textContent = `${matched.name} (${matched.type.toUpperCase()})`;
+  // Strict Privacy: Public viewers cannot see which shelter has taken the order
+  const stage = dispatch.stage || 1;
+  const tierLabel = stage === 1 ? 'Tier 01 Human Shelter' : stage === 2 ? 'Tier 02 Regional Shelter' : stage === 3 ? 'Tier 03 Registered Gaushala' : 'Tier 04 Bio-Compost Hub';
+  
+  if (destEl) {
+    destEl.textContent = `${tierLabel} (Privacy Protected)`;
+  }
+  if (destSubEl) {
+    destSubEl.textContent = 'Intake recipient & contact managed via Admin Portal';
+  }
+  if (driverNameEl) {
+    driverNameEl.textContent = 'Automated Volunteer Dispatch';
+  }
+  if (driverSubEl) {
+    driverSubEl.textContent = 'Secure OTP Handover Active &bull; Monitored by Admin';
   }
 
   if (stagePill) {
-    stagePill.textContent = `TIER 0${dispatch.stage || 1} ACTIVE`;
+    stagePill.textContent = `TIER 0${stage} ACTIVE`;
   }
 
   // Stepper highlights
@@ -608,7 +619,7 @@ function updateStepperState(status) {
 }
 
 /* ==========================================================================
-   5. DASHBOARD STATS & REALTIME AUDIT TABLE
+   5. DASHBOARD STATS & REALTIME AUDIT TABLE (MASKED RECIPIENTS & OTPS)
    ========================================================================== */
 function recalculateDashboardMetrics() {
   const mealsEl = document.getElementById('stat-meals-count');
@@ -636,6 +647,7 @@ function recalculateDashboardMetrics() {
 
 /**
  * Renders the Live Telemetry / Audit Log table in Card D
+ * Anonymizes recipient identity and masks OTPs for public viewers
  */
 function renderRealtimeTable() {
   const tbody = document.getElementById('realtime-donations-tbody');
@@ -652,8 +664,7 @@ function renderRealtimeTable() {
       const sourceClass = (d.source || 'Web').toLowerCase();
       const stage = d.stage || 1;
       const statusClass = (d.status || 'Posted').toLowerCase().replace(' ', '-');
-      const matched = allRecipients.find((r) => r.id === d.match_id);
-      const recipientName = matched ? matched.name : 'Assigning...';
+      const tierCategory = stage === 1 ? 'Tier 1 Shelter' : stage === 2 ? 'Tier 2 Regional' : stage === 3 ? 'Tier 3 Gaushala' : 'Tier 4 Compost';
 
       return `
         <tr>
@@ -661,12 +672,72 @@ function renderRealtimeTable() {
           <td><strong>${d.qty} Meals</strong> (${d.food_category || 'cooked'})</td>
           <td><span class="stage-tag s${stage}">Tier ${stage}</span></td>
           <td><span class="status-pill ${statusClass}">${d.status || 'Posted'}</span></td>
-          <td title="${recipientName}">${recipientName.length > 22 ? recipientName.substring(0, 22) + '...' : recipientName}</td>
-          <td><code>${d.otp || '----'}</code></td>
+          <td><span style="color:#0F7B5F;font-weight:500;">${tierCategory}</span> <small style="color:var(--text-muted);">(Protected)</small></td>
+          <td><code style="letter-spacing:2px;color:var(--text-muted);">••••</code></td>
         </tr>
       `;
     })
     .join('');
+}
+
+/* ==========================================================================
+   SHELTER FOOD REQUISITION WORKFLOW ("Shelters can ask food")
+   ========================================================================== */
+function openShelterRequestModal() {
+  const modal = document.getElementById('modal-shelter-request');
+  if (!modal) return;
+  modal.removeAttribute('hidden');
+  modal.hidden = false;
+  modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
+function closeShelterRequestModal() {
+  const modal = document.getElementById('modal-shelter-request');
+  if (!modal) return;
+  modal.setAttribute('hidden', 'true');
+  modal.hidden = true;
+  modal.style.display = 'none';
+  document.body.style.overflow = 'auto';
+}
+
+async function handleShelterRequestSubmit(e) {
+  e.preventDefault();
+  const name = document.getElementById('req-shelter-name')?.value.trim();
+  const type = document.getElementById('req-shelter-type')?.value;
+  const city = document.getElementById('req-shelter-city')?.value;
+  const meals = Number(document.getElementById('req-shelter-meals')?.value) || 50;
+  const foodPref = document.getElementById('req-food-preference')?.value;
+  const phone = document.getElementById('req-contact-phone')?.value.trim();
+  const address = document.getElementById('req-shelter-address')?.value.trim();
+  const notes = document.getElementById('req-special-notes')?.value.trim();
+
+  const submitBtn = document.getElementById('btn-submit-shelter-req');
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span>Broadcasting to Network...</span>';
+  }
+
+  // Log requisition to Supabase audit_log so Admins can inspect and dispatch
+  if (sbClient) {
+    try {
+      await sbClient.from('audit_log').insert([{
+        action: 'SHELTER_FOOD_REQUISITION',
+        target: `${name} (${city})`,
+        details: { meals, foodPref, type, phone, address, notes, created_at: new Date().toISOString() }
+      }]);
+    } catch (err) {
+      console.warn('[Shelter Request] Could not write to audit_log:', err.message);
+    }
+  }
+
+  closeShelterRequestModal();
+  showToast(`🙏 Requisition for ${meals} meals submitted for ${name}! Matching donors will be notified.`);
+
+  if (submitBtn) {
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = '<span>Broadcast Requisition to Network</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>';
+  }
 }
 
 /* ==========================================================================
