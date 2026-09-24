@@ -1,9 +1,11 @@
 {
   "version": 2,
   "rewrites": [
-    { "source": "/admin/login", "destination": "/admin/login.html" },
-    { "source": "/admin", "destination": "/admin/index.html" },
-    { "source": "/admin/(.*)", "destination": "/admin/index.html" },
-    { "source": "/(.*)", "destination": "/$1" }
+    { "source": "/", "destination": "/frontend/index.html" },
+    { "source": "/admin/login", "destination": "/frontend/admin/login.html" },
+    { "source": "/admin", "destination": "/frontend/admin/index.html" },
+    { "source": "/admin/", "destination": "/frontend/admin/index.html" },
+    { "source": "/admin/(.*)", "destination": "/frontend/admin/$1" },
+    { "source": "/(.*)", "destination": "/frontend/$1" }
   ]
 }
