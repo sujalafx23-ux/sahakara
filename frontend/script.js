@@ -160,6 +160,7 @@ document.addEventListener('DOMContentLoaded', () => {
   loadDonations();
   setupRealtimeSubscription();
   checkAdminPresence();
+  initOrders();
 });
 
 let allCities = [
@@ -471,6 +472,23 @@ async function handlePostSubmit(e) {
     submitBtn.disabled = false;
     submitBtn.innerHTML = '<span>Broadcast to Rescue Network</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>';
   }
+
+  // Register Donor Order into Orders Section
+  const newDonorOrder = {
+    id: 'ORD-' + (createdDonation.id ? createdDonation.id.replace('sk-', '').substring(0, 5).toUpperCase() : Math.floor(1000 + Math.random() * 9000)),
+    orderType: 'donor',
+    food: foodName || `${qty} Meals (${foodCategory})`,
+    qty: qty,
+    category: foodCategory,
+    city: city,
+    donor: establishmentName,
+    recipient: matchedRecipient ? matchedRecipient.name : 'Verified Rescue Node',
+    status: 'Matched',
+    stage: stage,
+    otp: otp,
+    timestamp: Date.now()
+  };
+  addOrderToRegistry(newDonorOrder);
 
   renderDispatchCard(createdDonation);
   renderRealtimeTable();
@@ -1087,7 +1105,24 @@ async function claimDonationForShelter(donationId, shelterName) {
     btn.innerHTML = '<span>✅ Batch Claimed & Dispatched</span>';
   }
 
-  showToast(`🎉 Batch successfully claimed by ${shelterName}! Driver dispatch coordinated.`);
+  // Register Shelter Claim into Orders Section
+  const newShelterOrder = {
+    id: 'ORD-' + (donationId ? donationId.replace('sk-', '').replace('demo-', '').substring(0, 5).toUpperCase() : Math.floor(1000 + Math.random() * 9000)),
+    orderType: 'shelter',
+    food: found?.food || 'Surplus Meal Batch',
+    qty: found?.qty || lastShelterRequest?.meals || 80,
+    category: found?.food_category || lastShelterRequest?.foodPref || 'Cooked Dinner',
+    city: found?.city || lastShelterRequest?.city || 'Jaipur',
+    donor: found?.area || found?.donor_type || 'Commercial Kitchen',
+    recipient: actualShelterName,
+    status: 'Matched',
+    stage: 2,
+    otp: found?.otp || Math.floor(1000 + Math.random() * 9000).toString(),
+    timestamp: Date.now()
+  };
+  addOrderToRegistry(newShelterOrder);
+
+  showToast(`🎉 Batch claimed by ${actualShelterName}! Order logged in Orders section.`);
   renderRealtimeTable();
   recalculateDashboardMetrics();
   renderMapData();
@@ -1234,6 +1269,36 @@ async function seedDemoDonationsQuick(e) {
     recalculateDashboardMetrics();
     renderMapData();
 
+    // Seed demo orders for both shelter and donor in Orders section
+    addOrderToRegistry({
+      id: 'ORD-DEMO1',
+      orderType: 'shelter',
+      food: '[Demo] 80 Meals — Rajma Chawal & Chapati',
+      qty: 80,
+      category: 'Cooked Dinner',
+      city: 'Jaipur',
+      donor: 'C-Scheme Dining Hall [Demo]',
+      recipient: 'Apna Ghar Ashram',
+      status: 'Matched',
+      stage: 2,
+      otp: '4419',
+      timestamp: Date.now() - 5 * 60000
+    });
+    addOrderToRegistry({
+      id: 'ORD-DEMO2',
+      orderType: 'donor',
+      food: '[Demo] 60 Meals — Chana Masala & Pulao',
+      qty: 60,
+      category: 'Cooked Lunch',
+      city: 'Delhi NCR',
+      donor: 'Connaught Place Central Hub [Demo]',
+      recipient: 'Robin Hood Army Node 02',
+      status: 'Matched',
+      stage: 2,
+      otp: '8910',
+      timestamp: Date.now() - 15 * 60000
+    });
+
     showToast('🌱 6 demo surplus food batches seeded across Jaipur, Delhi NCR, and Bengaluru!');
 
     // If shelter results view is open, live re-match immediately
@@ -1298,6 +1363,251 @@ window.seedDemoDonationsQuick = seedDemoDonationsQuick;
 window.backToShelterReqForm = backToShelterReqForm;
 window.claimDonationForShelter = claimDonationForShelter;
 window.checkAdminPresence = checkAdminPresence;
+window.filterOrdersTab = filterOrdersTab;
+window.renderOrdersSection = renderOrdersSection;
+window.initOrders = initOrders;
+
+/* ==========================================================================
+   ACTIVE ORDERS & CLAIMS REGISTRY
+   Two-way order visibility for Shelter Claims & Donor Dispatches
+   ========================================================================== */
+let activeOrders = [];
+let currentOrderFilter = 'all';
+
+const INITIAL_DEFAULT_ORDERS = [
+  {
+    id: 'ORD-8942',
+    orderType: 'shelter',
+    food: '80 Meals — Rajma Chawal & Chapati',
+    qty: 80,
+    category: 'Cooked Dinner',
+    city: 'Jaipur',
+    donor: 'C-Scheme Dining Hall [Demo]',
+    recipient: 'Apna Ghar Ashram',
+    status: 'Matched',
+    stage: 2,
+    otp: '4419',
+    timestamp: Date.now() - 12 * 60000
+  },
+  {
+    id: 'ORD-6120',
+    orderType: 'donor',
+    food: '45 Hot Meals — Dal Fry & Steamed Rice',
+    qty: 45,
+    category: 'Cooked Lunch',
+    city: 'Jaipur',
+    donor: 'Mansarovar Campus Canteen [Demo]',
+    recipient: 'Ananda Seva Ashram',
+    status: 'Matched',
+    stage: 2,
+    otp: '8912',
+    timestamp: Date.now() - 25 * 60000
+  }
+];
+
+function initOrders() {
+  loadOrdersFromStorage();
+  renderOrdersSection();
+}
+
+function loadOrdersFromStorage() {
+  try {
+    const raw = localStorage.getItem('sahakara_active_orders');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        activeOrders = parsed;
+        return;
+      }
+    }
+  } catch (e) {
+    console.debug('[Orders] Storage load fallback', e);
+  }
+  activeOrders = [...INITIAL_DEFAULT_ORDERS];
+}
+
+function saveOrdersToStorage() {
+  try {
+    localStorage.setItem('sahakara_active_orders', JSON.stringify(activeOrders));
+  } catch (e) {
+    console.debug('[Orders] Storage save error', e);
+  }
+}
+
+function addOrderToRegistry(order) {
+  if (!activeOrders.some((o) => o.id === order.id)) {
+    activeOrders.unshift(order);
+  }
+  saveOrdersToStorage();
+  renderOrdersSection();
+
+  // Pulse animation on the orders badge
+  const navBadge = document.getElementById('nav-orders-count');
+  if (navBadge) {
+    navBadge.style.transition = 'transform 0.25s ease';
+    navBadge.style.transform = 'scale(1.4)';
+    setTimeout(() => {
+      navBadge.style.transform = 'scale(1)';
+    }, 400);
+  }
+}
+
+function filterOrdersTab(filter, btn) {
+  currentOrderFilter = filter;
+  const tabs = document.querySelectorAll('.order-tab');
+  tabs.forEach((t) => {
+    t.classList.remove('active');
+    t.setAttribute('aria-selected', 'false');
+  });
+  if (btn) {
+    btn.classList.add('active');
+    btn.setAttribute('aria-selected', 'true');
+  }
+  renderOrdersSection();
+}
+
+function getTimeAgoString(timestamp) {
+  if (!timestamp) return 'Just now';
+  const diffSec = Math.max(0, Math.floor((Date.now() - timestamp) / 1000));
+  if (diffSec < 60) return 'Just now';
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHour = Math.floor(diffMin / 60);
+  if (diffHour < 24) return `${diffHour}h ago`;
+  return `${Math.floor(diffHour / 24)}d ago`;
+}
+
+function renderOrdersSection() {
+  const container = document.getElementById('orders-grid-container');
+  const countAll = document.getElementById('orders-tab-count-all');
+  const countShelter = document.getElementById('orders-tab-count-shelter');
+  const countDonor = document.getElementById('orders-tab-count-donor');
+  const navCount = document.getElementById('nav-orders-count');
+
+  const shelterCount = activeOrders.filter((o) => o.orderType === 'shelter').length;
+  const donorCount = activeOrders.filter((o) => o.orderType === 'donor').length;
+
+  if (countAll) countAll.textContent = activeOrders.length;
+  if (countShelter) countShelter.textContent = shelterCount;
+  if (countDonor) countDonor.textContent = donorCount;
+  if (navCount) navCount.textContent = activeOrders.length;
+
+  if (!container) return;
+
+  const filtered = activeOrders.filter((o) => {
+    if (currentOrderFilter === 'shelter') return o.orderType === 'shelter';
+    if (currentOrderFilter === 'donor') return o.orderType === 'donor';
+    return true;
+  });
+
+  if (filtered.length === 0) {
+    const emptyNotice = currentOrderFilter === 'shelter'
+      ? 'No active shelter claims found yet. Request surplus food to see your claim tracked here.'
+      : currentOrderFilter === 'donor'
+      ? 'No active donor dispatches found yet. Post surplus food to see your donation tracked here.'
+      : 'No active orders in the registry yet.';
+
+    container.innerHTML = `
+      <div class="orders-empty-state">
+        <div style="font-size:2rem;margin-bottom:8px;">📦</div>
+        <h4 style="font-size:1.125rem;color:var(--text-primary);margin-bottom:6px;">No Orders in This View</h4>
+        <p style="font-size:0.875rem;max-width:420px;margin:0 auto 16px auto;">${emptyNotice}</p>
+        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+          <button type="button" class="btn btn-secondary btn-sm" onclick="openShelterRequestModal()">Request Food as Shelter</button>
+          <button type="button" class="btn btn-primary btn-sm" onclick="openPostModal('donor')">Post Surplus as Donor</button>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = filtered.map((order, idx) => {
+    const isShelter = order.orderType === 'shelter';
+    const typeBadgeClass = isShelter ? 'order-badge-shelter' : 'order-badge-donor';
+    const typeLabel = isShelter ? '🏠 Shelter Claim' : '🍛 Donor Dispatch';
+    const timeAgo = getTimeAgoString(order.timestamp);
+    const donorName = order.donor || 'Commercial Kitchen';
+    const recipientName = order.recipient || 'Verified Shelter Node';
+    const otpDisplay = order.otp || '4419';
+    const isFirst = idx === 0;
+
+    return `
+      <div class="order-card ${isFirst ? 'highlight-new' : ''}" data-order-type="${order.orderType}">
+        <div class="order-card-top">
+          <div class="order-header-info">
+            <span class="order-ref-pill">#${order.id}</span>
+            <span class="order-badge ${typeBadgeClass}">${typeLabel}</span>
+            <span class="status-pill status-matched">${order.status || 'Matched'}</span>
+          </div>
+          <span class="order-time-stamp">⏱️ ${timeAgo}</span>
+        </div>
+
+        <div class="order-card-body">
+          <div class="order-food-info">
+            <h3 class="order-food-title">${order.food || 'Surplus Meal Package'}</h3>
+            <div class="order-tags">
+              <span class="order-tag">⚡ ${order.qty || 50} Meals</span>
+              <span class="order-tag">🍱 ${order.category || 'Cooked Meals'}</span>
+              <span class="order-tag">📍 ${order.city || 'Jaipur Cluster'}</span>
+            </div>
+          </div>
+
+          <div class="order-route-timeline">
+            <div class="route-node">
+              <span class="route-icon">🏪</span>
+              <div class="route-node-content">
+                <span class="route-role">Donor Kitchen</span>
+                <strong class="route-name">${donorName}</strong>
+              </div>
+            </div>
+            <div class="route-connector-line"></div>
+            <div class="route-node">
+              <span class="route-icon">🏠</span>
+              <div class="route-node-content">
+                <span class="route-role">Recipient Node</span>
+                <strong class="route-name">${recipientName}</strong>
+              </div>
+            </div>
+          </div>
+
+          <div class="order-stepper" aria-label="Order Progress Stepper">
+            <div class="step-item completed">
+              <span class="step-dot"></span>
+              <span class="step-label">Created</span>
+            </div>
+            <div class="step-item active">
+              <span class="step-dot"></span>
+              <span class="step-label">Matched</span>
+            </div>
+            <div class="step-item">
+              <span class="step-dot"></span>
+              <span class="step-label">EV Cargo</span>
+            </div>
+            <div class="step-item">
+              <span class="step-dot"></span>
+              <span class="step-label">Handover</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="order-card-bottom">
+          <div class="order-otp-box">
+            <span class="otp-caption">Handover OTP</span>
+            <span class="otp-number">${otpDisplay}</span>
+          </div>
+          <div class="order-actions-row" style="display:flex;gap:8px;">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="showModalNotice('Driver Telemetry: EV Cargo Dispatch #4419 • Insulated container 68°C • Safe window 195m remaining.')" style="font-size:0.75rem;padding:4px 8px;">
+              <span>📍 Driver Info</span>
+            </button>
+            <button type="button" class="btn btn-primary btn-sm" onclick="showFssaiPass()" style="font-size:0.75rem;padding:4px 10px;">
+              <span>Digital Pass</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
 
 /* ==========================================================================
    6. HELPLINE & IVR DIAL-PAD SIMULATOR

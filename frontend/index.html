@@ -48,6 +48,10 @@
 
       <!-- Navigation Links -->
       <nav class="nav-links" aria-label="Main Navigation">
+        <a href="#orders" class="nav-item nav-item-highlight">
+          <span>Orders</span>
+          <span class="nav-orders-badge" id="nav-orders-count">0</span>
+        </a>
         <a href="#how-it-works" class="nav-item">How it works</a>
         <a href="#ladder" class="nav-item">Ladder</a>
         <a href="#helpline" class="nav-item">Helpline</a>
@@ -262,6 +266,40 @@
           </div>
 
         </div>
+      </div>
+    </section>
+
+    <!-- 3. Active Orders & Dispatches (Shelter Claims & Donor Dispatches) -->
+    <section class="section-orders" id="orders">
+      <div class="container">
+        
+        <div class="orders-header-flex">
+          <div>
+            <span class="section-kicker" style="color:var(--brand-green);">RESCUE CHAIN TRACKING</span>
+            <h2 class="section-heading" style="margin-bottom:6px;">Active Orders &amp; Dispatches</h2>
+            <p class="section-subtext" style="margin-bottom:0;">Live tracking for shelter food claims and donor surplus releases across verified clusters.</p>
+          </div>
+          
+          <div class="orders-header-actions">
+            <div class="orders-filter-tabs" role="tablist">
+              <button type="button" class="order-tab active" data-filter="all" onclick="filterOrdersTab('all', this)" role="tab" aria-selected="true">
+                <span>All Orders</span> (<span id="orders-tab-count-all">0</span>)
+              </button>
+              <button type="button" class="order-tab" data-filter="shelter" onclick="filterOrdersTab('shelter', this)" role="tab" aria-selected="false">
+                <span>🏠 Shelter Claims</span> (<span id="orders-tab-count-shelter">0</span>)
+              </button>
+              <button type="button" class="order-tab" data-filter="donor" onclick="filterOrdersTab('donor', this)" role="tab" aria-selected="false">
+                <span>🍛 Donor Dispatches</span> (<span id="orders-tab-count-donor">0</span>)
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Orders Grid Container -->
+        <div class="orders-grid" id="orders-grid-container">
+          <!-- Dynamically populated from JS -->
+        </div>
+
       </div>
     </section>
 
@@ -902,6 +940,7 @@
 
         <div class="footer-links-group">
           <span class="footer-col-title">Platform</span>
+          <a href="#orders">Active Orders Registry</a>
           <a href="#how-it-works">How it works</a>
           <a href="#ladder">Last Resort Ladder</a>
           <a href="#helpline">Helpline &amp; SMS</a>
