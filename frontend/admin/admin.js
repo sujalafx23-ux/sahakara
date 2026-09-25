@@ -118,7 +118,7 @@ function adminLogout() {
   localStorage.removeItem('sahakara_admin_user');
   localStorage.removeItem('sahakara_admin_token');
   if (sbAdmin && sbAdmin.auth) {
-    sbAdmin.auth.signOut().catch(() => {});
+    sbAdmin.auth.signOut().catch(() => { });
   }
   redirectToAdminLogin();
 }
@@ -176,7 +176,7 @@ async function loadAdminCities() {
         adminCities = data;
         return;
       }
-    } catch (e) {}
+    } catch (e) { }
   }
 
   // Fallback only if offline / disconnected
@@ -197,7 +197,7 @@ async function loadAdminRecipients() {
         adminRecipients = data;
         return;
       }
-    } catch (e) {}
+    } catch (e) { }
   }
 
   // Fallback only if offline / disconnected
@@ -212,7 +212,7 @@ async function loadAdminDonations() {
         adminDonations = data;
         return;
       }
-    } catch (e) {}
+    } catch (e) { }
   }
 
   // Fallback only if offline / disconnected
@@ -227,7 +227,7 @@ async function loadAdminAuditLogs() {
         adminAuditLogs = data;
         return;
       }
-    } catch (e) {}
+    } catch (e) { }
   }
 
   adminAuditLogs = [
@@ -276,7 +276,7 @@ function setupAdminRealtime() {
         renderLadderBoard();
       })
       .subscribe();
-  } catch (e) {}
+  } catch (e) { }
 }
 
 /* ==========================================================================
@@ -286,7 +286,7 @@ function renderOverviewMetrics() {
   const activeDonations = adminDonations.filter((d) => d.status === 'Posted' || d.status === 'Matched' || d.status === 'Picked up');
   const deliveredDonations = adminDonations.filter((d) => d.status === 'Delivered');
   const expiredDonations = adminDonations.filter((d) => d.status === 'Expired');
-  
+
   // Today's donations
   const now = new Date();
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
@@ -589,7 +589,7 @@ async function saveDonationDrawerChanges() {
   if (sbAdmin && !currentDrawerDonation.id.startsWith('sk-')) {
     try {
       await sbAdmin.from('donations').update({ status: newStatus, match_id: newMatchId }).eq('id', currentDrawerDonation.id);
-    } catch (e) {}
+    } catch (e) { }
   }
 
   await logAdminAction('UPDATE_DONATION', `Donation #${currentDrawerDonation.id.substring(0, 8)}`, {
@@ -615,7 +615,7 @@ async function markDonationExpired(donationId) {
     if (sbAdmin && !donationId.startsWith('sk-')) {
       try {
         await sbAdmin.from('donations').update({ status: 'Expired', stage: 4 }).eq('id', donationId);
-      } catch (e) {}
+      } catch (e) { }
     }
 
     await logAdminAction('MARK_EXPIRED', `Donation #${donationId.substring(0, 8)}`, { status: 'Expired' });
@@ -792,7 +792,7 @@ async function handleSaveRecipient(e) {
   if (sbAdmin) {
     try {
       await sbAdmin.from('recipients').upsert([payload]);
-    } catch (err) {}
+    } catch (err) { }
   }
 
   await logAdminAction(editId ? 'UPDATE_RECIPIENT' : 'CREATE_RECIPIENT', payload.name, payload);
@@ -807,7 +807,7 @@ async function deleteRecipient(id) {
   if (sbAdmin) {
     try {
       await sbAdmin.from('recipients').delete().eq('id', id);
-    } catch (e) {}
+    } catch (e) { }
   }
 
   await logAdminAction('DELETE_RECIPIENT', `Node ${id}`, { id });
@@ -858,7 +858,7 @@ async function approveNode(id) {
     if (sbAdmin) {
       try {
         await sbAdmin.from('recipients').update({ status: 'Approved', verified: true }).eq('id', id);
-      } catch (e) {}
+      } catch (e) { }
     }
     await logAdminAction('APPROVE_NODE', rec.name, { status: 'Approved' });
     renderVerificationQueue();
@@ -876,7 +876,7 @@ async function rejectNode(id) {
     if (sbAdmin) {
       try {
         await sbAdmin.from('recipients').update({ status: 'Rejected' }).eq('id', id);
-      } catch (e) {}
+      } catch (e) { }
     }
     await logAdminAction('REJECT_NODE', rec.name, { reason: note });
     renderVerificationQueue();
@@ -929,7 +929,7 @@ async function handleSaveCity(e) {
   if (sbAdmin) {
     try {
       await sbAdmin.from('cities').upsert([payload]);
-    } catch (e) {}
+    } catch (e) { }
   }
 
   await logAdminAction('CREATE_CITY', name, payload);
@@ -946,7 +946,7 @@ async function toggleCityStatus(cityId) {
   if (sbAdmin) {
     try {
       await sbAdmin.from('cities').update({ status: city.status }).eq('id', cityId);
-    } catch (e) {}
+    } catch (e) { }
   }
 
   await logAdminAction('TOGGLE_CITY_STATUS', city.name, { status: city.status });
@@ -1010,7 +1010,7 @@ async function logAdminAction(action, target, details = {}) {
   if (sbAdmin) {
     try {
       await sbAdmin.from('audit_log').insert([entry]);
-    } catch (e) {}
+    } catch (e) { }
   }
 
   renderAuditTable();
