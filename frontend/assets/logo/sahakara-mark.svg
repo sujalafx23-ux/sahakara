@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <!-- 
+    SAHAKARA ICON MARK
+    Theme: Modern, Geometric, Flat Vector
+    Concept: Food Redistribution Bowl (Vessel) + 3-Tier Food Rescue Ladder + Warm Amber Beacon
+    Primary Color: Deep Emerald Green (#0F7B5F)
+    Accent Color: Warm Amber (#F59E0B)
+  -->
+
+  <!-- Clean Off-White Background Canvas -->
+  <rect width="512" height="512" fill="#F8FAF8" rx="96"/>
+
+  <g transform="translate(256, 260)">
+    <!-- 1. The Nourishing Bowl (Geometric Base Arc) -->
+    <path d="M -140,-10
+             C -140,84 -76,144 0,144
+             C 76,144 140,84 140,-10
+             L 112,-10
+             C 112,68 58,116 0,116
+             C -58,116 -112,68 -112,-10
+             Z"
+          fill="#0F7B5F" />
+
+    <!-- 2. The 3-Tier Ascending Rescue Ladder (Steps of Last Resort) -->
+    <!-- Tier 1 Step: Cooked Meals -> Immediate Shelter Feed -->
+    <path d="M -68,-10 
+             L -68,-52 
+             L -24,-52 
+             L -24,-10 Z" 
+          fill="#0F7B5F" 
+          rx="4" />
+
+    <!-- Tier 2 Step: Produce & Pantry Rations -->
+    <path d="M -18,-10 
+             L -18,-92 
+             L 26,-92 
+             L 26,-10 Z" 
+          fill="#0F7B5F" 
+          rx="4" />
+
+    <!-- Tier 3 Step: Secondary Rescue / Gaushala / Bio-redistribution -->
+    <path d="M 32,-10 
+             L 32,-132 
+             L 76,-132 
+             L 76,-10 Z" 
+          fill="#0F7B5F" 
+          rx="4" />
+
+    <!-- 3. Warm Amber Sun / Beacon of Zero Food Waste (#F59E0B) -->
+    <!-- Placed cleanly above the highest rescue step -->
+    <circle cx="54" cy="-156" r="14" fill="#F59E0B" />
+  </g>
+</svg>

@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!-- 
+    SAHAKARA ULTRA-LEGIBLE 32x32 FAVICON
+    Pixel-grid aligned for crisp rendering in browser tabs, bookmarks & bookmarks bar.
+    Bold bowl base + 3-tier food ladder + amber beacon.
+  -->
+  
+  <!-- 1. Solid Nourishing Vessel Base (#0F7B5F) -->
+  <path d="M 3,16 C 3,24.2 8.8,29 16,29 C 23.2,29 29,24.2 29,16 L 25.5,16 C 25.5,22 20.5,25.8 16,25.8 C 11.5,25.8 6.5,22 6.5,16 Z" 
+        fill="#0F7B5F" />
+
+  <!-- 2. The 3-Tier Ascending Rescue Ladder Steps -->
+  <!-- Step 1: Cooked Food / Shelters -->
+  <rect x="9.5" y="13.5" width="3.2" height="3.5" rx="0.6" fill="#0F7B5F" />
+
+  <!-- Step 2: Community Pantry -->
+  <rect x="14.4" y="9.5" width="3.2" height="7.5" rx="0.6" fill="#0F7B5F" />
+
+  <!-- Step 3: Secondary Feed / Gaushala -->
+  <rect x="19.3" y="5.5" width="3.2" height="11.5" rx="0.6" fill="#0F7B5F" />
+
+  <!-- 3. Warm Amber Beacon of Zero Waste (#F59E0B) -->
+  <circle cx="20.9" cy="2.8" r="1.8" fill="#F59E0B" />
+</svg>

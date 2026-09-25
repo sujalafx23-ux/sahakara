@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 180" width="100%" height="100%">
+  <!-- 
+    SAHAKARA FULL LOGO LOCKUP
+    Icon Mark + Clean Sans-Serif Wordmark ("Sahakara")
+    Style: Minimal, Geometric, Modern Flat Vector
+  -->
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@700;800&amp;display=swap');
+      .sahakara-wordmark {
+        font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        font-weight: 800;
+        font-size: 76px;
+        letter-spacing: -2.5px;
+        fill: #0F7B5F;
+      }
+    </style>
+  </defs>
+
+  <!-- Left: Icon Mark (Centered vertically in 180px height canvas) -->
+  <g transform="translate(90, 96) scale(0.46)">
+    <!-- 1. The Nourishing Bowl (Geometric Base Arc) -->
+    <path d="M -140,-10
+             C -140,84 -76,144 0,144
+             C 76,144 140,84 140,-10
+             L 112,-10
+             C 112,68 58,116 0,116
+             C -58,116 -112,68 -112,-10
+             Z"
+          fill="#0F7B5F" />
+
+    <!-- 2. The 3-Tier Ascending Rescue Ladder -->
+    <!-- Tier 1: Immediate Shelter Food -->
+    <path d="M -68,-10 L -68,-52 L -24,-52 L -24,-10 Z" fill="#0F7B5F" />
+
+    <!-- Tier 2: Community Pantry -->
+    <path d="M -18,-10 L -18,-92 L 26,-92 L 26,-10 Z" fill="#0F7B5F" />
+
+    <!-- Tier 3: Secondary Feed -->
+    <path d="M 32,-10 L 32,-132 L 76,-132 L 76,-10 Z" fill="#0F7B5F" />
+
+    <!-- 3. Warm Amber Beacon of Zero Waste (#F59E0B) -->
+    <circle cx="54" cy="-156" r="14" fill="#F59E0B" />
+  </g>
+
+  <!-- Right: Clean Wordmark "Sahakara" -->
+  <text x="175" y="117" class="sahakara-wordmark">Sahakara</text>
+</svg>
