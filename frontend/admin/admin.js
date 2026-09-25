@@ -7,6 +7,7 @@
 let sbAdmin = null;
 let currentAdmin = null;
 let adminDonations = [];
+let adminOrders = [];
 let adminRecipients = [];
 let adminCities = [];
 let adminAuditLogs = [];
@@ -45,9 +46,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   ]);
 
   setupAdminRealtime();
+  loadAdminOrders();
   renderOverviewMetrics();
   renderOverviewCharts();
   renderDonationsTable();
+  renderAdminOrders();
   renderLadderBoard();
   renderRecipientsTable();
   renderVerificationQueue();
@@ -138,7 +141,7 @@ function switchAdminTab(tabName, clickedBtn) {
   if (clickedBtn) clickedBtn.classList.add('active');
 
   // Toggle View Containers
-  const views = ['overview', 'donations', 'ladder', 'recipients', 'verification', 'cities', 'reports', 'audit'];
+  const views = ['overview', 'donations', 'ladder', 'recipients', 'verification', 'cities', 'reports', 'audit', 'orders'];
   views.forEach((v) => {
     const el = document.getElementById(`view-${v}`);
     if (el) el.hidden = v !== tabName;
@@ -153,15 +156,18 @@ function switchAdminTab(tabName, clickedBtn) {
     verification: 'Node Verification Queue',
     cities: 'Expansion Cluster Cities',
     reports: 'Compliance Reports & Certificates',
-    audit: 'Administrative Action Trail'
+    audit: 'Administrative Action Trail',
+    orders: 'Active Orders & Dispatch Coordination (Admin Only)'
   };
 
   const headingEl = document.getElementById('page-heading-title');
   if (headingEl) headingEl.textContent = titles[tabName] || 'Admin Dashboard';
 
-  // Render Charts if switched to Overview
+  // Render Charts if switched to Overview, or Orders table if switched to Orders
   if (tabName === 'overview') {
     renderOverviewCharts();
+  } else if (tabName === 'orders') {
+    renderAdminOrders();
   }
 }
 
@@ -1223,3 +1229,226 @@ async function seedDemoDonationsQuick(e) {
   }
 }
 
+/* ==========================================================================
+   ACTIVE ORDERS & DISPATCH COORDINATION (ADMIN ONLY)
+   ========================================================================== */
+function loadAdminOrders() {
+  let stored = [];
+  try {
+    const raw = localStorage.getItem('sahakara_active_orders');
+    if (raw) stored = JSON.parse(raw);
+  } catch (e) {}
+
+  if (!Array.isArray(stored) || stored.length === 0) {
+    stored = [
+      {
+        id: 'ORD-8942',
+        orderType: 'shelter',
+        food: '45kg Fresh Dal Fry & Jeera Rice',
+        qty: 90,
+        category: 'Cooked Meal',
+        city: 'Jaipur',
+        donor: 'Jaipur Marriott & Banquet (Tonk Rd)',
+        recipient: 'Aasha Shelter Home (Malviya Nagar)',
+        status: 'Matched',
+        stage: 1,
+        otp: '4821',
+        timestamp: Date.now() - 12 * 60000
+      },
+      {
+        id: 'ORD-6218',
+        orderType: 'donor',
+        food: '30kg Packed Vegetable Biryani',
+        qty: 60,
+        category: 'Cooked Meal',
+        city: 'Jaipur',
+        donor: 'Royal Palace Convention (Mansarovar)',
+        recipient: 'Bal Seva Orphanage',
+        status: 'Picked up',
+        stage: 2,
+        otp: '7392',
+        timestamp: Date.now() - 34 * 60000
+      }
+    ];
+  }
+
+  // Merge with any Supabase matched donations that aren't already represented
+  if (Array.isArray(adminDonations)) {
+    adminDonations
+      .filter((d) => ['matched', 'picked up', 'delivered'].includes((d.status || '').toLowerCase()))
+      .forEach((d) => {
+        const orderId = 'ORD-' + (d.id ? d.id.replace('sk-', '').replace('demo-', '').substring(0, 5).toUpperCase() : 'SK');
+        if (!stored.some((o) => o.id === orderId)) {
+          const matchedRec = (adminRecipients || []).find((r) => r.id === d.match_id);
+          stored.push({
+            id: orderId,
+            orderType: d.match_id && String(d.match_id).startsWith('shelter-') ? 'shelter' : 'donor',
+            food: d.food || 'Surplus Meal Batch',
+            qty: d.qty || 40,
+            category: d.food_category || 'Cooked',
+            city: d.city || 'Jaipur',
+            donor: d.area || d.donor_type || 'Commercial Donor',
+            recipient: matchedRec ? matchedRec.name : (d.match_id ? String(d.match_id).replace('shelter-', '').replace(/-/g, ' ') : 'Verified Shelter'),
+            status: d.status || 'Matched',
+            stage: d.stage || 1,
+            otp: d.otp || '----',
+            timestamp: d.created_at ? new Date(d.created_at).getTime() : Date.now() - 20 * 60000
+          });
+        }
+      });
+  }
+
+  adminOrders = stored;
+  try {
+    localStorage.setItem('sahakara_active_orders', JSON.stringify(adminOrders));
+  } catch (e) {}
+
+  updateAdminOrdersBadge();
+}
+
+function updateAdminOrdersBadge() {
+  const badge = document.getElementById('badge-admin-orders');
+  if (badge) {
+    badge.textContent = adminOrders.length;
+  }
+}
+
+function renderAdminOrders() {
+  const tbody = document.getElementById('admin-orders-tbody');
+  if (!tbody) return;
+
+  const totalEl = document.getElementById('admin-orders-total-count');
+  const shelterEl = document.getElementById('admin-orders-shelter-count');
+  const donorEl = document.getElementById('admin-orders-donor-count');
+  const transitEl = document.getElementById('admin-orders-transit-count');
+
+  const shelterTotal = adminOrders.filter((o) => o.orderType === 'shelter').length;
+  const donorTotal = adminOrders.filter((o) => o.orderType === 'donor').length;
+  const transitTotal = adminOrders.filter((o) => (o.status || '').toLowerCase() === 'picked up').length;
+
+  if (totalEl) totalEl.textContent = adminOrders.length;
+  if (shelterEl) shelterEl.textContent = shelterTotal;
+  if (donorEl) donorEl.textContent = donorTotal;
+  if (transitEl) transitEl.textContent = transitTotal;
+
+  updateAdminOrdersBadge();
+
+  const search = (document.getElementById('filter-order-search')?.value || '').toLowerCase();
+  const typeFilter = document.getElementById('filter-order-type')?.value || 'all';
+  const statusFilter = document.getElementById('filter-order-status')?.value || 'all';
+  const cityFilter = document.getElementById('filter-order-city')?.value || 'all';
+
+  const filtered = adminOrders.filter((o) => {
+    const matchSearch =
+      (o.id || '').toLowerCase().includes(search) ||
+      (o.food || '').toLowerCase().includes(search) ||
+      (o.donor || '').toLowerCase().includes(search) ||
+      (o.recipient || '').toLowerCase().includes(search) ||
+      (o.otp || '').includes(search);
+    const matchType = typeFilter === 'all' || o.orderType === typeFilter;
+    const matchStatus = statusFilter === 'all' || (o.status || '').toLowerCase() === statusFilter.toLowerCase();
+    const matchCity = cityFilter === 'all' || (o.city || '').toLowerCase() === cityFilter.toLowerCase();
+    return matchSearch && matchType && matchStatus && matchCity;
+  });
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:28px;color:var(--text-muted);">No active orders or dispatches match the selected filter.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = filtered
+    .map((o) => {
+      const typeBadge =
+        o.orderType === 'shelter'
+          ? `<span class="source-badge" style="background:#EFF6FF;color:#1D4ED8;border:1px solid #BFDBFE;">🏠 Shelter Claim</span>`
+          : `<span class="source-badge" style="background:#ECFDF5;color:#047857;border:1px solid #A7F3D0;">🍛 Donor Dispatch</span>`;
+
+      const statusClass = (o.status || 'Matched').toLowerCase().replace(' ', '-');
+      const timeStr = getTimeAgoStringAdmin(o.timestamp);
+
+      return `
+        <tr>
+          <td><strong style="font-family:var(--font-mono);font-size:0.875rem;color:var(--brand-green);">${o.id}</strong></td>
+          <td>${typeBadge}</td>
+          <td>
+            <strong>${o.food}</strong><br>
+            <small style="color:var(--text-muted);">${o.qty} kg / meals &bull; ${o.category}</small>
+          </td>
+          <td>
+            <div style="font-weight:600;font-size:0.8125rem;">${o.donor}</div>
+            <small style="color:var(--text-muted);">${o.city}</small>
+          </td>
+          <td>
+            <div style="font-weight:700;font-size:0.8125rem;color:#1E3A8A;">${o.recipient}</div>
+            <small style="color:var(--text-muted);">${o.city}</small>
+          </td>
+          <td>
+            <span class="status-pill ${statusClass}">${o.status}</span><br>
+            <span class="stage-tag s${o.stage || 1}" style="margin-top:4px;display:inline-block;">Tier 0${o.stage || 1}</span>
+          </td>
+          <td>
+            <code style="background:#F1F5F9;padding:3px 8px;border-radius:4px;font-size:0.875rem;font-weight:700;color:#0F172A;border:1px solid #CBD5E1;">${o.otp || '----'}</code>
+          </td>
+          <td><small style="color:var(--text-muted);">${timeStr}</small></td>
+          <td>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              ${
+                o.status === 'Matched'
+                  ? `<button type="button" class="btn btn-secondary btn-sm" onclick="adminUpdateOrderStatus('${o.id}', 'Picked up')">Mark Picked Up</button>`
+                  : o.status === 'Picked up'
+                  ? `<button type="button" class="btn btn-primary btn-sm" onclick="adminUpdateOrderStatus('${o.id}', 'Delivered')">Mark Delivered</button>`
+                  : `<span style="font-size:0.75rem;color:#059669;font-weight:700;">✅ Complete</span>`
+              }
+            </div>
+          </td>
+        </tr>
+      `;
+    })
+    .join('');
+}
+
+function getTimeAgoStringAdmin(timestamp) {
+  if (!timestamp) return 'Just now';
+  const diffSec = Math.max(0, Math.floor((Date.now() - timestamp) / 1000));
+  if (diffSec < 60) return 'Just now';
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHour = Math.floor(diffMin / 60);
+  if (diffHour < 24) return `${diffHour}h ago`;
+  return `${Math.floor(diffHour / 24)}d ago`;
+}
+
+async function adminUpdateOrderStatus(orderId, newStatus) {
+  const order = adminOrders.find((o) => o.id === orderId);
+  if (!order) return;
+
+  order.status = newStatus;
+  if (newStatus === 'Picked up') order.stage = 3;
+  if (newStatus === 'Delivered') order.stage = 4;
+
+  try {
+    localStorage.setItem('sahakara_active_orders', JSON.stringify(adminOrders));
+  } catch (e) {}
+
+  // Also update corresponding donation row if present
+  if (sbAdmin) {
+    try {
+      const donationId = orderId.replace('ORD-', 'sk-').toLowerCase();
+      await sbAdmin.from('donations').update({ status: newStatus }).eq('id', donationId);
+      await sbAdmin.from('audit_log').insert([{
+        action: 'ADMIN_UPDATE_ORDER_STATUS',
+        target: orderId,
+        details: { newStatus, updated_by: currentAdmin?.email, timestamp: new Date().toISOString() }
+      }]);
+    } catch (e) {
+      console.warn('[Admin Orders] Supabase sync error:', e.message);
+    }
+  }
+
+  showAdminNotification(`Order ${orderId} status updated to: ${newStatus}`);
+  renderAdminOrders();
+}
+
+window.loadAdminOrders = loadAdminOrders;
+window.renderAdminOrders = renderAdminOrders;
+window.adminUpdateOrderStatus = adminUpdateOrderStatus;
