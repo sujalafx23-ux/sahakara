@@ -1141,6 +1141,9 @@
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
             </button>
           </div>
+          <div style="text-align:center;margin-top:12px;font-size:0.8125rem;color:var(--text-muted);">
+            Don't have an account yet? <a href="javascript:void(0)" onclick="switchAuthTab('signup')" style="color:var(--brand-green);font-weight:600;">Create an account</a>
+          </div>
         </form>
 
         <!-- Form B: Email OTP Login -->
@@ -1193,7 +1196,7 @@
         
         <!-- Step 1: User Details -->
         <div id="signup-step-1">
-          <form class="modal-form-body" onsubmit="handleSignupStep1(event)">
+          <form class="modal-form-body" id="form-signup-email-pwd" onsubmit="handleEmailPasswordSignup(event)">
             
             <div class="form-group">
               <label class="input-label">Select Account Role <span class="req">*</span></label>
@@ -1262,9 +1265,12 @@
             <div class="modal-footer" style="padding-top:10px;">
               <button type="button" class="btn btn-secondary" onclick="closeSignInModal()">Cancel</button>
               <button type="submit" class="btn btn-primary" id="btn-send-signup-otp">
-                <span>Send Verification Code</span>
+                <span>Sign Up &amp; Continue</span>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
               </button>
+            </div>
+            <div style="text-align:center;margin-top:12px;font-size:0.8125rem;color:var(--text-muted);">
+              Already have an account? <a href="javascript:void(0)" onclick="switchAuthTab('signin')" style="color:var(--brand-green);font-weight:600;">Sign in with password</a>
             </div>
           </form>
         </div>

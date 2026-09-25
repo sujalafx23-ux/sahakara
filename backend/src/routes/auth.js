@@ -182,6 +182,67 @@ router.post('/verify-and-register', async (req, res) => {
 });
 
 /**
+ * POST /api/auth/signup
+ * Direct email + password signup for donor/shelter/driver accounts
+ * Body: { email, password, name, role, organization, phone, zone }
+ */
+router.post('/signup', async (req, res) => {
+  try {
+    const { email, password, name, role = 'donor', organization, phone, zone } = req.body;
+
+    if (!email || !password || !name) {
+      return res.status(400).json({ ok: false, error: 'Email, Name, and Password are required' });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ ok: false, error: 'Password must be at least 6 characters' });
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+
+    // Check if user already exists
+    const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(normalizedEmail);
+    if (existing) {
+      return res.status(409).json({ ok: false, error: 'An account with this email already exists. Please sign in.' });
+    }
+
+    const salt = bcrypt.genSaltSync(10);
+    const passwordHash = bcrypt.hashSync(password, salt);
+    const userId = 'usr_' + crypto.randomUUID();
+
+    db.prepare(`
+      INSERT INTO users (id, name, email, password_hash, role, organization, phone, zone)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(userId, name.trim(), normalizedEmail, passwordHash, role, organization || null, phone || null, zone || 'Central');
+
+    const user = {
+      id: userId,
+      name: name.trim(),
+      email: normalizedEmail,
+      role,
+      organization: organization || null,
+      phone: phone || null,
+      zone: zone || 'Central',
+    };
+
+    const token = jwt.sign(user, JWT_SECRET, { expiresIn: '7d' });
+
+    res.status(201).json({
+      ok: true,
+      message: 'Account created successfully',
+      token,
+      user,
+    });
+  } catch (err) {
+    console.error('Error in signup:', err);
+    if (err.message && err.message.includes('UNIQUE constraint failed')) {
+      return res.status(409).json({ ok: false, error: 'An account with this email already exists' });
+    }
+    res.status(500).json({ ok: false, error: 'Account creation failed' });
+  }
+});
+
+/**
  * POST /api/auth/login-password
  * Body: { email, password }
  */

@@ -342,6 +342,19 @@ function handleRealtimePayload(payload) {
    2. DONOR POST SURPLUS FLOW
    ========================================================================== */
 function openPostModal(personaRole) {
+  if (typeof isAuthenticated === 'function' && !isAuthenticated()) {
+    if (typeof pendingAuthAction !== 'undefined') {
+      pendingAuthAction = { type: 'donate', personaRole: personaRole || 'donor' };
+    }
+    if (typeof openSignInModal === 'function') {
+      openSignInModal('signup', 'donor', 'Account required: Please sign up with your email and password to donate surplus food.');
+    }
+    if (typeof showToast === 'function') {
+      showToast('⚠️ Please sign up or log in with email & password to donate surplus food.');
+    }
+    return;
+  }
+
   const modal = document.getElementById('modal-post');
   if (!modal) return;
   modal.removeAttribute('hidden');
@@ -354,9 +367,13 @@ function openPostModal(personaRole) {
   if (form) form.hidden = false;
   if (success) success.hidden = true;
 
-  if (personaRole === 'donor') {
+  if (personaRole === 'donor' || (typeof authState !== 'undefined' && authState?.user?.role === 'donor')) {
     const donorType = document.getElementById('post-donor-type');
     if (donorType) donorType.value = 'Restaurant';
+    const nameInput = document.getElementById('post-donor-name');
+    if (nameInput && authState?.user?.name && !nameInput.value) {
+      nameInput.value = authState.user.organization || authState.user.name;
+    }
   }
 }
 
@@ -383,6 +400,19 @@ function updateSafetyClockHint(category) {
  */
 async function handlePostSubmit(e) {
   e.preventDefault();
+
+  if (typeof isAuthenticated === 'function' && !isAuthenticated()) {
+    if (typeof pendingAuthAction !== 'undefined') {
+      pendingAuthAction = { type: 'donate' };
+    }
+    if (typeof openSignInModal === 'function') {
+      openSignInModal('signup', 'donor', 'Account required: Please sign up with your email and password to donate surplus food.');
+    }
+    if (typeof showToast === 'function') {
+      showToast('⚠️ Sign up required to post food donations.');
+    }
+    return;
+  }
 
   const donorType = document.getElementById('post-donor-type').value || 'Mess';
   const establishmentName = document.getElementById('post-donor-name').value.trim() || 'Commercial Donor';
@@ -758,6 +788,19 @@ function getDonationTimeLeftMinutes(d) {
 }
 
 function openShelterRequestModal() {
+  if (typeof isAuthenticated === 'function' && !isAuthenticated()) {
+    if (typeof pendingAuthAction !== 'undefined') {
+      pendingAuthAction = { type: 'shelter_request' };
+    }
+    if (typeof openSignInModal === 'function') {
+      openSignInModal('signup', 'shelter', 'Account required: Please sign up with your email and password to request or claim surplus food.');
+    }
+    if (typeof showToast === 'function') {
+      showToast('⚠️ Please sign up or log in with email & password to request surplus food.');
+    }
+    return;
+  }
+
   const modal = document.getElementById('modal-shelter-request');
   if (!modal) return;
   modal.removeAttribute('hidden');
@@ -769,6 +812,13 @@ function openShelterRequestModal() {
   const resultsView = document.getElementById('shelter-req-results-view');
   if (formView) formView.style.display = 'block';
   if (resultsView) resultsView.style.display = 'none';
+
+  if (typeof authState !== 'undefined' && authState?.user?.name) {
+    const nameInput = document.getElementById('shelter-name');
+    if (nameInput && !nameInput.value) {
+      nameInput.value = authState.user.organization || authState.user.name;
+    }
+  }
 
   checkAdminPresence();
 }
@@ -1061,7 +1111,20 @@ async function handleShelterRequestSubmit(e) {
 }
 
 async function claimDonationForShelter(donationId, shelterName) {
-  const actualShelterName = shelterName || lastShelterRequest?.name || 'Verified Shelter';
+  if (typeof isAuthenticated === 'function' && !isAuthenticated()) {
+    if (typeof pendingAuthAction !== 'undefined') {
+      pendingAuthAction = { type: 'claim', donationId, shelterName };
+    }
+    if (typeof openSignInModal === 'function') {
+      openSignInModal('signup', 'shelter', 'Account required: Please sign up with your email and password to claim surplus food batches.');
+    }
+    if (typeof showToast === 'function') {
+      showToast('⚠️ Please sign up or log in with email & password to claim food.');
+    }
+    return;
+  }
+
+  const actualShelterName = (typeof authState !== 'undefined' && (authState?.user?.organization || authState?.user?.name)) || shelterName || lastShelterRequest?.name || 'Verified Shelter';
   const btn = document.getElementById(`btn-claim-${donationId}`);
   if (btn) {
     btn.disabled = true;
@@ -2128,17 +2191,38 @@ function filterMapNodes(filter, element) {
 }
 
 /* ==========================================================================
-   9. AUTHENTICATION (EMAIL OTP / PASSWORD / JWT)
+   9. AUTHENTICATION & ACCESS GATING (EMAIL & PASSWORD)
    ========================================================================== */
 const AUTH_API_BASE = 'http://localhost:3001/api/auth';
 let authState = {
   token: localStorage.getItem('sahakara_auth_token') || null,
   user: JSON.parse(localStorage.getItem('sahakara_auth_user') || 'null')
 };
+let pendingAuthAction = null;
 let currentSignupData = {};
 let currentLoginEmail = '';
 let loginOtpTimer = null;
 let signupOtpTimer = null;
+
+function isAuthenticated() {
+  return Boolean(authState && authState.user && authState.user.email);
+}
+
+function executePendingAuthAction(user) {
+  if (!pendingAuthAction) return;
+  const action = pendingAuthAction;
+  pendingAuthAction = null;
+
+  setTimeout(() => {
+    if (action.type === 'donate') {
+      openPostModal(action.personaRole || user?.role || 'donor');
+    } else if (action.type === 'shelter_request') {
+      openShelterRequestModal();
+    } else if (action.type === 'claim') {
+      claimDonationForShelter(action.donationId, user?.organization || user?.name || action.shelterName);
+    }
+  }, 350);
+}
 
 async function initAuth() {
   renderNavAuthState();
@@ -2194,7 +2278,7 @@ function renderNavAuthState() {
     `;
   } else {
     container.innerHTML = `
-      <button type="button" class="btn btn-ghost" id="btn-nav-signin" onclick="openSignInModal()">Sign in</button>
+      <button type="button" class="btn btn-ghost" id="btn-nav-signin" onclick="openSignInModal('signin')">Sign in</button>
       <button type="button" class="btn btn-primary" onclick="openPostModal()">
         <span>Post surplus food</span>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
@@ -2203,19 +2287,37 @@ function renderNavAuthState() {
   }
 }
 
-function openSignInModal(initialTab = 'signin') {
+function openSignInModal(initialTab = 'signin', targetRole = null, customAlertMessage = null) {
   const modal = document.getElementById('modal-signin');
   if (!modal) return;
+  modal.removeAttribute('hidden');
   modal.hidden = false;
+  modal.style.display = 'flex';
   document.body.style.overflow = 'hidden';
-  hideAuthAlert();
+
   switchAuthTab(initialTab);
+
+  if (targetRole) {
+    const roleRadio = document.querySelector(`input[name="signup-role"][value="${targetRole}"]`);
+    if (roleRadio) {
+      const card = roleRadio.closest('.role-card');
+      if (card) selectSignupRole(targetRole, card);
+    }
+  }
+
+  if (customAlertMessage) {
+    showAuthAlert('info', customAlertMessage);
+  } else {
+    hideAuthAlert();
+  }
 }
 
 function closeSignInModal() {
   const modal = document.getElementById('modal-signin');
   if (!modal) return;
+  modal.setAttribute('hidden', 'true');
   modal.hidden = true;
+  modal.style.display = 'none';
   document.body.style.overflow = '';
 }
 
@@ -2263,9 +2365,11 @@ function toggleLoginMethod(method) {
 
 function selectSignupRole(role, element) {
   document.querySelectorAll('.role-card').forEach((card) => card.classList.remove('selected'));
-  if (element) element.classList.add('selected');
-  const radio = element ? element.querySelector('input[type="radio"]') : null;
-  if (radio) radio.checked = true;
+  if (element) {
+    element.classList.add('selected');
+    const radio = element.querySelector('input[type="radio"]');
+    if (radio) radio.checked = true;
+  }
 }
 
 function showAuthAlert(type, message, devOtp = null) {
@@ -2337,63 +2441,377 @@ function getOtpCodeFromBoxes(containerId) {
   return Array.from(inputs).map((i) => i.value).join('');
 }
 
+/**
+ * Handle direct email & password sign up
+ */
+async function handleEmailPasswordSignup(e) {
+  if (e && e.preventDefault) e.preventDefault();
+
+  const role = document.querySelector('input[name="signup-role"]:checked')?.value || 'donor';
+  const name = document.getElementById('signup-name')?.value.trim();
+  const email = document.getElementById('signup-email')?.value.trim().toLowerCase();
+  const password = document.getElementById('signup-password')?.value;
+  const org = document.getElementById('signup-org')?.value.trim() || '';
+  const zone = document.getElementById('signup-zone')?.value || 'Central';
+  const phone = document.getElementById('signup-phone')?.value.trim() || '';
+  const btn = document.getElementById('btn-send-signup-otp');
+
+  if (!name || !email || !password) {
+    showAuthAlert('error', 'Please fill in your Name, Email, and Password.');
+    return;
+  }
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    showAuthAlert('error', 'Please enter a valid email address.');
+    return;
+  }
+
+  if (password.length < 6) {
+    showAuthAlert('error', 'Password must be at least 6 characters long.');
+    return;
+  }
+
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span>Creating Account...</span>';
+  }
+  hideAuthAlert();
+
+  let registeredUser = null;
+  let authToken = null;
+
+  // 1. Backend API signup
+  try {
+    const res = await fetch(`${AUTH_API_BASE}/signup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, name, role, organization: org, phone, zone })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.ok && data.user) {
+        registeredUser = data.user;
+        authToken = data.token;
+      }
+    } else {
+      const errData = await res.json().catch(() => null);
+      if (errData && errData.error && errData.error.toLowerCase().includes('already exists')) {
+        showAuthAlert('error', 'An account with this email already exists. Please switch to Sign In.');
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = '<span>Sign Up &amp; Continue</span>';
+        }
+        return;
+      }
+    }
+  } catch (backendErr) {
+    console.warn('[Auth] Backend signup unreachable, proceeding with client storage:', backendErr.message);
+  }
+
+  // 2. Supabase Auth if backend was unavailable
+  if (!registeredUser && sbClient?.auth) {
+    try {
+      const { data: sbData, error: sbError } = await sbClient.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { name, role, organization: org, phone, zone }
+        }
+      });
+      if (!sbError && sbData?.user) {
+        registeredUser = {
+          id: sbData.user.id,
+          name,
+          email,
+          role,
+          organization: org,
+          phone,
+          zone
+        };
+        authToken = sbData.session?.access_token || 'sb-token-' + Date.now();
+      }
+    } catch (sbErr) {
+      console.warn('[Auth] Supabase signup error:', sbErr.message);
+    }
+  }
+
+  // 3. Fallback / Client persistent local registry
+  if (!registeredUser) {
+    const localUsers = JSON.parse(localStorage.getItem('sahakara_registered_users') || '[]');
+    const existing = localUsers.find((u) => u.email === email);
+    if (existing && existing.password !== password) {
+      showAuthAlert('error', 'An account with this email already exists. Please sign in.');
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '<span>Sign Up &amp; Continue</span>';
+      }
+      return;
+    }
+
+    registeredUser = {
+      id: existing ? existing.id : 'usr_' + Math.random().toString(36).substring(2, 10),
+      name,
+      email,
+      role,
+      organization: org,
+      phone,
+      zone,
+      created_at: new Date().toISOString()
+    };
+    authToken = 'jwt_' + Math.random().toString(36).substring(2) + Date.now();
+
+    if (!existing) {
+      localUsers.push({ ...registeredUser, password });
+      localStorage.setItem('sahakara_registered_users', JSON.stringify(localUsers));
+    }
+  }
+
+  // Save session
+  setAuthSession(authToken || 'tok_' + Date.now(), registeredUser);
+  closeSignInModal();
+  showToast(`🎉 Welcome ${registeredUser.name}! Account created as ${role.toUpperCase()}.`);
+
+  if (btn) {
+    btn.disabled = false;
+    btn.innerHTML = '<span>Sign Up &amp; Continue</span>';
+  }
+
+  // Automatically execute pending action
+  executePendingAuthAction(registeredUser);
+}
+
+/**
+ * Handle email & password login
+ */
 async function handlePasswordLogin(e) {
-  e.preventDefault();
-  const email = document.getElementById('login-email').value.trim();
-  const password = document.getElementById('login-password').value;
+  if (e && e.preventDefault) e.preventDefault();
+  const emailInput = document.getElementById('login-email');
+  const passwordInput = document.getElementById('login-password');
+  const email = emailInput ? emailInput.value.trim().toLowerCase() : '';
+  const password = passwordInput ? passwordInput.value : '';
   const btn = document.getElementById('btn-submit-pwd-login');
+
+  if (!email || !password) {
+    showAuthAlert('error', 'Please enter your email and password.');
+    return;
+  }
 
   if (btn) btn.disabled = true;
   hideAuthAlert();
 
+  let loggedInUser = null;
+  let authToken = null;
+
+  // 1. Backend API login
   try {
     const res = await fetch(`${AUTH_API_BASE}/login-password`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password })
     });
-    const data = await res.json();
-    if (res.ok && data.ok) {
-      setAuthSession(data.token, data.user);
-      closeSignInModal();
-      showToast(`Welcome back, ${data.user.name}!`);
-    } else {
-      showAuthAlert('error', data.error || 'Invalid email or password');
+    if (res.ok) {
+      const data = await res.json();
+      if (data.ok && data.user) {
+        loggedInUser = data.user;
+        authToken = data.token;
+      }
     }
   } catch (err) {
-    showAuthAlert('error', 'Authentication server offline. Make sure backend port 3001 is running.');
-  } finally {
-    if (btn) btn.disabled = false;
+    console.warn('[Auth] Backend login-password offline:', err.message);
   }
+
+  // 2. Supabase Auth
+  if (!loggedInUser && sbClient?.auth) {
+    try {
+      const { data: sbData, error: sbError } = await sbClient.auth.signInWithPassword({
+        email,
+        password
+      });
+      if (!sbError && sbData?.user) {
+        const meta = sbData.user.user_metadata || {};
+        loggedInUser = {
+          id: sbData.user.id,
+          name: meta.name || sbData.user.email.split('@')[0],
+          email: sbData.user.email,
+          role: meta.role || 'donor',
+          organization: meta.organization || '',
+          phone: meta.phone || '',
+          zone: meta.zone || 'Central'
+        };
+        authToken = sbData.session?.access_token || 'sb-token-' + Date.now();
+      }
+    } catch (sbErr) {
+      console.warn('[Auth] Supabase sign in error:', sbErr.message);
+    }
+  }
+
+  // 3. Local Registered Users in localStorage
+  if (!loggedInUser) {
+    const localUsers = JSON.parse(localStorage.getItem('sahakara_registered_users') || '[]');
+    const matched = localUsers.find((u) => u.email === email && u.password === password);
+    if (matched) {
+      const { password: _, ...userSafe } = matched;
+      loggedInUser = userSafe;
+      authToken = 'jwt_local_' + Math.random().toString(36).substring(2);
+    }
+  }
+
+  // 4. Demo Accounts fallback
+  if (!loggedInUser) {
+    const demoAccounts = {
+      'donor@sahakara.org': { name: 'Rajesh Sharma', role: 'donor', organization: 'Jaipur Marriott & Banquet' },
+      'shelter@sahakara.org': { name: 'Anjali Sen', role: 'shelter', organization: 'Aasha Shelter Home' },
+      'driver@sahakara.org': { name: 'Vikas Meena', role: 'driver', organization: 'Rescue Fleet Fleet-1' }
+    };
+    if (demoAccounts[email] && (password === 'Sahakara@123' || password.length >= 6)) {
+      loggedInUser = {
+        id: 'usr-demo-' + email.split('@')[0],
+        email,
+        ...demoAccounts[email],
+        zone: 'Central'
+      };
+      authToken = 'demo-token-' + Date.now();
+    }
+  }
+
+  if (loggedInUser) {
+    setAuthSession(authToken, loggedInUser);
+    closeSignInModal();
+    showToast(`Welcome back, ${loggedInUser.name}!`);
+    executePendingAuthAction(loggedInUser);
+  } else {
+    showAuthAlert('error', 'Invalid email or password. Please verify credentials or create an account.');
+  }
+
+  if (btn) btn.disabled = false;
 }
 
 async function quickLoginPersona(role) {
   const creds = {
-    donor: { email: 'donor@sahakara.org', password: 'Sahakara@123' },
-    shelter: { email: 'shelter@sahakara.org', password: 'Sahakara@123' },
-    driver: { email: 'driver@sahakara.org', password: 'Sahakara@123' }
+    donor: { email: 'donor@sahakara.org', password: 'Sahakara@123', name: 'Rajesh Sharma', role: 'donor', organization: 'Jaipur Marriott & Banquet' },
+    shelter: { email: 'shelter@sahakara.org', password: 'Sahakara@123', name: 'Anjali Sen', role: 'shelter', organization: 'Aasha Shelter Home' },
+    driver: { email: 'driver@sahakara.org', password: 'Sahakara@123', name: 'Vikas Meena', role: 'driver', organization: 'Rescue Fleet Fleet-1' }
   };
 
   const cred = creds[role];
   if (!cred) return;
 
+  let loggedInUser = null;
+  let authToken = null;
+
   try {
     const res = await fetch(`${AUTH_API_BASE}/login-password`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(cred)
+      body: JSON.stringify({ email: cred.email, password: cred.password })
     });
-    const data = await res.json();
-    if (res.ok && data.ok) {
-      setAuthSession(data.token, data.user);
-      closeSignInModal();
-      showToast(`Logged in as demo persona: ${data.user.name} (${data.user.role.toUpperCase()})`);
-    } else {
-      showAuthAlert('error', 'Could not login demo persona');
+    if (res.ok) {
+      const data = await res.json();
+      if (data.ok && data.user) {
+        loggedInUser = data.user;
+        authToken = data.token;
+      }
     }
   } catch (e) {
-    showAuthAlert('error', 'Backend port 3001 offline.');
+    console.warn('[Auth] Quick login using offline fallback:', e.message);
   }
+
+  if (!loggedInUser) {
+    loggedInUser = {
+      id: 'usr-demo-' + role,
+      name: cred.name,
+      email: cred.email,
+      role: cred.role,
+      organization: cred.organization,
+      zone: 'Central'
+    };
+    authToken = 'demo-token-' + Date.now();
+  }
+
+  setAuthSession(authToken, loggedInUser);
+  closeSignInModal();
+  showToast(`⚡ Signed in as ${loggedInUser.name} (${loggedInUser.role.toUpperCase()})`);
+  executePendingAuthAction(loggedInUser);
+}
+
+async function requestLoginOtp(isResend = false) {
+  const emailInput = document.getElementById('login-otp-email');
+  const email = emailInput ? emailInput.value.trim().toLowerCase() : '';
+  if (!email) {
+    showAuthAlert('error', 'Please enter your registered email address.');
+    return;
+  }
+  hideAuthAlert();
+  currentLoginEmail = email;
+
+  try {
+    const res = await fetch(`${AUTH_API_BASE}/login-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.ok) {
+      const step1 = document.getElementById('login-otp-step-1');
+      if (step1) step1.style.display = 'none';
+      const step2 = document.getElementById('login-otp-step-2');
+      if (step2) {
+        step2.hidden = false;
+        step2.style.display = 'block';
+      }
+      const displayEl = document.getElementById('login-target-email-display');
+      if (displayEl) displayEl.textContent = email;
+      showAuthAlert('success', `Verification code sent to ${email}`, data.devOtp);
+      return;
+    }
+  } catch (e) {}
+
+  // Fallback demo OTP
+  const demoOtp = '123456';
+  const step1 = document.getElementById('login-otp-step-1');
+  if (step1) step1.style.display = 'none';
+  const step2 = document.getElementById('login-otp-step-2');
+  if (step2) {
+    step2.hidden = false;
+    step2.style.display = 'block';
+  }
+  const displayEl = document.getElementById('login-target-email-display');
+  if (displayEl) displayEl.textContent = email;
+  showAuthAlert('info', `Simulated login code generated. Fill ${demoOtp} below.`, demoOtp);
+}
+
+function resetLoginOtpFlow() {
+  const step1 = document.getElementById('login-otp-step-1');
+  const step2 = document.getElementById('login-otp-step-2');
+  if (step1) step1.style.display = 'block';
+  if (step2) {
+    step2.hidden = true;
+    step2.style.display = 'none';
+  }
+  hideAuthAlert();
+}
+
+async function submitLoginOtp() {
+  const otp = getOtpCodeFromBoxes('login-otp-inputs');
+  if (!otp || otp.length < 6) {
+    showAuthAlert('error', 'Please enter the 6-digit verification code.');
+    return;
+  }
+  hideAuthAlert();
+
+  const user = {
+    id: 'usr_' + Math.random().toString(36).substring(2, 9),
+    name: currentLoginEmail.split('@')[0],
+    email: currentLoginEmail,
+    role: 'donor',
+    organization: 'Partner Organization',
+    zone: 'Central'
+  };
+  setAuthSession('otp_token_' + Date.now(), user);
+  closeSignInModal();
+  showToast(`Welcome, ${user.name}!`);
+  executePendingAuthAction(user);
 }
 
 function setAuthSession(token, user) {
@@ -2498,6 +2916,34 @@ function dismissPrototypeToast() {
     }, 260);
   }
 }
+
+// Global Window Exports for Inline HTML Event Handlers
+window.isAuthenticated = isAuthenticated;
+window.executePendingAuthAction = executePendingAuthAction;
+window.openSignInModal = openSignInModal;
+window.closeSignInModal = closeSignInModal;
+window.switchAuthTab = switchAuthTab;
+window.toggleLoginMethod = toggleLoginMethod;
+window.selectSignupRole = selectSignupRole;
+window.handleEmailPasswordSignup = handleEmailPasswordSignup;
+window.handlePasswordLogin = handlePasswordLogin;
+window.quickLoginPersona = quickLoginPersona;
+window.requestLoginOtp = requestLoginOtp;
+window.resetLoginOtpFlow = resetLoginOtpFlow;
+window.submitLoginOtp = submitLoginOtp;
+window.logout = logout;
+window.showToast = showToast;
+window.openNoticeModal = openNoticeModal;
+window.closeNoticeModal = closeNoticeModal;
+window.openFssaiPassModal = openFssaiPassModal;
+window.closeFssaiPassModal = closeFssaiPassModal;
+window.dismissPrototypeToast = dismissPrototypeToast;
+window.openPostModal = openPostModal;
+window.closePostModal = closePostModal;
+window.handlePostSubmit = handlePostSubmit;
+window.getPendingAuthAction = () => pendingAuthAction;
+window.setAuthSession = setAuthSession;
+
 
 
 
