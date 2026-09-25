@@ -868,8 +868,8 @@
                 <span>Post surplus food</span>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
               </button>
-              <button type="button" class="btn btn-outline-white btn-lg" onclick="openPostModal('shelter')">
-                Register your shelter
+              <button type="button" class="btn btn-outline-white btn-lg" onclick="openShelterRequestModal()">
+                Request Food for Shelter
               </button>
             </div>
           </div>
@@ -913,7 +913,7 @@
         <div class="footer-links-group">
           <span class="footer-col-title">Get Involved</span>
           <a href="javascript:void(0)" onclick="openPostModal('donor')">Commercial Kitchens</a>
-          <a href="javascript:void(0)" onclick="openPostModal('shelter')">Shelter Node Registry</a>
+          <a href="javascript:void(0)" onclick="openShelterRequestModal()">Request Food (Shelters)</a>
           <a href="javascript:void(0)" onclick="openPostModal('driver')">Volunteer Drivers</a>
           <a href="javascript:void(0)" onclick="openPostModal('gaushala')">Gaushalas</a>
           <a href="javascript:void(0)" onclick="openPostModal('compost')">Compost Partners</a>
@@ -1282,6 +1282,8 @@
       </div>
 
     </div>
+  </div>
+
   <!-- Modal: Shelter Food Requisition ("Shelters can ask food") -->
   <div class="modal-backdrop" id="modal-shelter-request" role="dialog" aria-modal="true" aria-labelledby="shelter-req-title" hidden>
     <div class="modal-dialog modal-dialog-lg">

@@ -979,7 +979,7 @@ function renderShelterMatchResults(matchData, req) {
               ? `<button type="button" class="btn btn-secondary btn-sm" disabled title="Demo data" style="cursor:not-allowed;opacity:0.65;">
                    🔒 Demo data
                  </button>`
-              : `<button type="button" class="btn btn-primary btn-sm" id="btn-claim-${item.id}" onclick="claimDonationForShelter('${item.id}', '${(req.name || 'Shelter').replace(/'/g, "\\'")}')">
+              : `<button type="button" class="btn btn-primary btn-sm" id="btn-claim-${item.id}" onclick="claimDonationForShelter('${item.id}')">
                    <span>Claim Food Batch &rarr;</span>
                  </button>`
             }
@@ -1043,13 +1043,14 @@ async function handleShelterRequestSubmit(e) {
 }
 
 async function claimDonationForShelter(donationId, shelterName) {
+  const actualShelterName = shelterName || lastShelterRequest?.name || 'Verified Shelter';
   const btn = document.getElementById(`btn-claim-${donationId}`);
   if (btn) {
     btn.disabled = true;
     btn.innerHTML = '<span>Coordinating Dispatch...</span>';
   }
 
-  const matchKey = `shelter-${(shelterName || 'shelter').toLowerCase().replace(/\s+/g, '-')}`;
+  const matchKey = `shelter-${actualShelterName.toLowerCase().replace(/[^a-z0-9]/g, '-')}`;
 
   // Update Supabase
   if (sbClient) {
@@ -1290,6 +1291,9 @@ async function checkAdminPresence() {
   return isAdmin;
 }
 
+window.openShelterRequestModal = openShelterRequestModal;
+window.closeShelterRequestModal = closeShelterRequestModal;
+window.handleShelterRequestSubmit = handleShelterRequestSubmit;
 window.seedDemoDonationsQuick = seedDemoDonationsQuick;
 window.backToShelterReqForm = backToShelterReqForm;
 window.claimDonationForShelter = claimDonationForShelter;
